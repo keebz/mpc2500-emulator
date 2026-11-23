@@ -43,17 +43,32 @@ void ata_reset(void) {
     ata.status = card_present ? (ST_DRDY | ST_DSC) : 0;
 }
 
-static uint32_t ata_lba(void) { return ata.lba0 | (ata.lba1 << 8) | (ata.lba2 << 16) | ((uint32_t)(ata.head & 0x0F) << 24); }
+// Translated CHS geometry reported by IDENTIFY: 16 heads x 63 sectors, cylinders capped at 16383 (as large CF cards do)
+static uint32_t geo_cyl(void) { uint32_t sec = (uint32_t)(card_bytes / 512), c = sec / (16 * 63); return c > 16383 ? 16383 : c; }
+// Drive/head bit 6 selects LBA (28-bit) or CHS addressing. Returns 0 and sets ata.lba, or -1 if the address is outside the card.
+static int ata_address(void) {
+    uint32_t sec = (uint32_t)(card_bytes / 512);
+    if (ata.head & 0x40) ata.lba = ata.lba0 | (ata.lba1 << 8) | (ata.lba2 << 16) | ((uint32_t)(ata.head & 0x0F) << 24);
+    else {
+        uint32_t cyl = ata.lba1 | (ata.lba2 << 8), hd = ata.head & 0x0F, sc = ata.lba0;
+        if (sc == 0 || sc > 63 || hd >= 16 || cyl >= geo_cyl()) return -1;
+        ata.lba = (cyl * 16 + hd) * 63 + (sc - 1);
+    }
+    uint32_t n = ata.count ? ata.count : 256;
+    return ((uint64_t)ata.lba + n <= sec) ? 0 : -1;
+}
+static void abort_idnf(void) { ata.status = ST_DRDY | ST_DSC | ST_ERR; ata.err = 0x10; ata.remain = 0; ata.writing = 0; }
 static void load_sector(void) {
     if ((uint64_t)ata.lba * 512 + 512 <= card_bytes) memcpy(ata.buf, card + (size_t)ata.lba * 512, 512); else memset(ata.buf, 0, 512);
     ata.pos = 0; ata.status = ST_DRDY | ST_DSC | ST_DRQ; ata_sectors_read++;
 }
 static void identify(void) {
-    uint16_t w[256] = {0}; uint32_t sec = (uint32_t)(card_bytes / 512); uint32_t cyl = sec / (16 * 63);
+    uint16_t w[256] = {0}; uint32_t sec = (uint32_t)(card_bytes / 512); uint32_t cyl = geo_cyl();
     w[0] = 0x848A;                                    // CompactFlash signature
+    w[22] = 4; w[47] = 0x0001; w[49] = 0x0200;
     w[1] = (uint16_t)cyl; w[3] = 16; w[6] = 63;
     w[49] = 0x0200;                                   // LBA supported
-    w[53] = 1; w[54] = (uint16_t)cyl; w[55] = 16; w[56] = 63; w[57] = (cyl * 16 * 63) & 0xFFFF; w[58] = (cyl * 16 * 63) >> 16;
+    w[53] = 1; w[54] = (uint16_t)cyl; w[55] = 16; w[56] = 63; w[57] = (uint16_t)((cyl * 16 * 63) & 0xFFFF); w[58] = (uint16_t)((cyl * 16 * 63) >> 16);
     w[60] = sec & 0xFFFF; w[61] = sec >> 16;
     const char *ser = "EMU0000000000000001", *mod = "MPC2500 EMULATED CF CARD";
     for (int i = 0; i < 10; i++) w[10 + i] = (uint16_t)((ser[2 * i] << 8) | ser[2 * i + 1]);
@@ -67,9 +82,10 @@ static void command(uint8_t c) {
     if (!card_present) { ata.status = 0; return; }
     switch (c) {
     case 0x20: case 0x21: case 0xC4:                                    // READ SECTORS / READ MULTIPLE
-        ata.lba = ata_lba(); ata.remain = ata.count ? ata.count : 256; load_sector(); break;
+        if (ata_address()) { abort_idnf(); break; } ata.remain = ata.count ? ata.count : 256; load_sector(); break;
     case 0x30: case 0x31: case 0xC5:                                    // WRITE SECTORS / WRITE MULTIPLE
-        ata.lba = ata_lba(); ata.remain = ata.count ? ata.count : 256; ata.writing = 1; ata.pos = 0; ata.status = ST_DRDY | ST_DSC | ST_DRQ; break;
+        if (ata_address()) { abort_idnf(); break; } ata.remain = ata.count ? ata.count : 256; ata.writing = 1; ata.pos = 0; ata.status = ST_DRDY | ST_DSC | ST_DRQ; break;
+    case 0x90: ata.status = ST_DRDY | ST_DSC; ata.err = 1; ata.count = 1; ata.lba0 = 1; ata.lba1 = ata.lba2 = 0; ata.head &= 0xF0; break;   // EXECUTE DEVICE DIAGNOSTIC: no error, device 0 signature
     case 0xEC: identify(); break;                                       // IDENTIFY DEVICE
     case 0xEF: case 0x91: case 0xE0: case 0xE1: case 0xE2: case 0xE3: case 0xE5: case 0xE6: case 0xE7: case 0xC6: case 0x40: case 0x41: case 0x10: case 0x00:
         ata.status = ST_DRDY | ST_DSC;                                  // SET FEATURES, INIT PARAMS, standby/idle/sleep, SET MULTIPLE, VERIFY, RECALIBRATE, NOP

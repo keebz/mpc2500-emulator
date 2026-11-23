@@ -118,7 +118,7 @@ int main(int argc, char **argv) {
         printf("end: pc=%08x sr=%08x steps=%llu\nR0-R7: ", cpu.pc, cpu.sr, (unsigned long long)cpu.cycles);
         for (int i = 0; i < 8; i++) printf("%08x ", cpu.r[i]);
         printf("\nR8-R15: "); for (int i = 8; i < 16; i++) printf("%08x ", cpu.r[i]);
-        printf("\n"); fault_summary();
+        printf("\n"); soc_dump_intc(); fault_summary();
     } else {
 #ifdef USE_SDL
         rc = ui_run(skin, keymap);

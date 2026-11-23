@@ -41,16 +41,16 @@ static void put40(SH3 *c, int dn, int64_t v) { wr40(c, dn, v); }
 static void dsr_set(SH3 *c, int N, int Z, int V, int GT, int dc) {
     c->dsr = (c->dsr & ~0xF1u) | (V ? 0x10u : 0) | (N ? 0x20u : 0) | (Z ? 0x40u : 0) | (GT ? 0x80u : 0) | (dc ? 1u : 0);
 }
-static int dc_select(SH3 *c, int N, int Z, int V, int carry_or_shout, int logical, int gt_arith) {
+static int dc_select(SH3 *c, int N, int Z, int V, int carry_or_shout, int logical, int shift) {
     switch ((c->dsr >> 1) & 7) {
     case 0: return carry_or_shout;                         // carry/borrow (logical: 0; shifts: last bit out)
     case 1: return N;
     case 2: return Z;
     case 3: return logical ? 0 : V;
-    case 4: return logical ? 0 : !((N ^ V) | Z);
-    case 5: return logical ? 0 : !(N ^ V);
+    case 4: return (logical || shift) ? 0 : !((N ^ V) | Z);   // PSHA / PSHL: GT and GE modes always give 0 (manual 5.5)
+    case 5: return (logical || shift) ? 0 : !(N ^ V);
     }
-    (void)gt_arith; return 0;
+    return 0;
 }
 /* arithmetic-class commit (add/sub/copy/abs/neg/clr/inc/dec/rnd/psha).  v = untruncated result.  flags: update DSR (unconditional instrs only).
    dc_override: -1 = by CS bits; 0/1 = force (PADDC/PSUBC carry/borrow).  gt_zero: shifts always clear GT. */
@@ -61,9 +61,31 @@ static void arith_commit(SH3 *c, int dn, int64_t v, int carry, int flags, int dc
     if (dn >= 0) put40(c, dn, v);
     if (!flags) return;
     int N = (int)((v >> 39) & 1), Z = (v == 0), V = ovf, GT = gt_zero ? 0 : !((N ^ V) | Z);
-    int dc = dc_override >= 0 ? dc_override : dc_select(c, N, Z, V, carry, 0, 1);
+    int dc = dc_override >= 0 ? dc_override : dc_select(c, N, Z, V, carry, 0, gt_zero);
     dsr_set(c, N, Z, V, GT, dc);
 }
+/* integer-class commit (PINC/PDEC): 24-bit operation (top word + guard); overflow bounds are the 16-bit top word, low word cleared */
+static void int_commit(SH3 *c, int dn, int64_t v, int carry, int flags) {
+    v = sx40(v);
+    int ovf = (v > 0x7FFF0000LL || v < -0x80000000LL);
+    if (ovf && sat_on(c)) { v = v > 0 ? 0x7FFF0000LL : -0x80000000LL; ovf = 0; }
+    put40(c, dn, v);
+    if (!flags) return;
+    int N = (int)((v >> 39) & 1), Z = (v == 0), GT = !((N ^ ovf) | Z);
+    dsr_set(c, N, Z, ovf, GT, dc_select(c, N, Z, ovf, carry, 0, 0));
+}
+/* PDMSB: shift amount that normalises the 40-bit source: +31 (zero/all ones) .. 0 (MSB at bit 30) .. -8 (MSB at bit 38) */
+static void pdmsb_commit(SH3 *c, int dn, int64_t src, int flags) {
+    int64_t y = src < 0 ? ~src : src; int k = -1;
+    for (int b = 38; b >= 0; b--) if ((y >> b) & 1) { k = b; break; }
+    int r = 30 - k;
+    put40(c, dn, (int64_t)r * 65536);
+    if (!flags) return;
+    int N = r < 0, Z = r == 0, GT = r > 0, dc = 0;
+    switch ((c->dsr >> 1) & 7) { case 1: dc = N; break; case 2: dc = Z; break; case 4: dc = GT; break; case 5: dc = !N; break; default: dc = 0; }
+    dsr_set(c, N, Z, 0, GT, dc);
+}
+
 /* logical-class commit: 16-bit top-word result r16, guard and low word cleared */
 static void logic_commit(SH3 *c, int dn, uint16_t r16, int shout, int flags) {
     int64_t v = (int64_t)r16 << 16;                         // positive 40-bit (guard = 0)
@@ -85,7 +107,7 @@ static int ppi(SH3 *c, uint16_t f) {
         if (arith) {                                                   // PSHA #imm7 (-32..+32), unconditional
             int imm = (f >> 4) & 127; if (imm & 64) imm -= 128;
             int64_t r; int shout = 0;
-            if (imm >= 0) { r = v << imm; shout = imm ? (int)((v >> (40 - imm)) & 1) : 0; } else { int k = -imm; r = v >> k; shout = (int)((v >> (k - 1)) & 1); }
+            if (imm >= 0) { r = (int64_t)((uint64_t)v << imm); shout = imm ? (int)((v >> (40 - imm)) & 1) : 0; } else { int k = -imm; r = v >> k; shout = (int)((v >> (k - 1)) & 1); }
             arith_commit(c, dn, r, shout, 1, -1, 1);
         } else {                                                       // PSHL #imm6 (-16..+16)
             int imm = (f >> 4) & 63; if (imm & 32) imm -= 64;
@@ -116,8 +138,8 @@ static int ppi(SH3 *c, uint16_t f) {
         case 0xA0: if (!valid_dn(dn)) return 1; { int bw = (c->dsr & 1); int64_t r = a - b - bw; int borrow = ((uint64_t)(uint32_t)a < (uint64_t)(uint32_t)b + bw); arith_commit(c, dn, r, borrow, 1, borrow, 0); } return 0;   // PSUBC
         case 0xB0: if (!valid_dn(dn)) return 1; { int cw = (c->dsr & 1); int64_t r = a + b + cw; int carry = (int)((((uint64_t)(uint32_t)a + (uint32_t)b + cw) >> 32) & 1); arith_commit(c, dn, r, carry, 1, carry, 0); } return 0;   // PADDC
         case 0x84: { int64_t r = sx40(a - b); int borrow = ((uint32_t)a < (uint32_t)b); arith_commit(c, -1, r, borrow, 1, -1, 0); } return 0;                                                                     // PCMP
-        case 0x88: case 0xA8: { int64_t s = (key == 0x88) ? a : b; if (!valid_dn(dn)) return 1; arith_commit(c, dn, s < 0 ? -s : s, 0, 1, -1, 0); } return 0;                                              // PABS
-        case 0x98: case 0xB8: { int64_t s = (key == 0x98) ? a : b; if (!valid_dn(dn)) return 1; int64_t r = s + 0x8000; if (sx40(r) > 0x7FFFFFFFLL && sat_on(c)) r = 0x7FFFFFFFLL; arith_commit(c, dn, r & ~0xFFFFLL, 0, 1, -1, 0); } return 0;   // PRND
+        case 0x88: case 0xA8: { int64_t s = (key == 0x88) ? a : b; if (!valid_dn(dn)) return 1; arith_commit(c, dn, s < 0 ? -s : s, (s < 0 && (uint32_t)s != 0), 1, -1, 0); } return 0;                                              // PABS
+        case 0x98: case 0xB8: { int64_t s = (key == 0x98) ? a : b; if (!valid_dn(dn)) return 1; int64_t r = s + 0x8000; if (sx40(r) > 0x7FFFFFFFLL && sat_on(c)) r = 0x7FFFFFFFLL; arith_commit(c, dn, r & ~0xFFFFLL, (int)((((uint64_t)(uint32_t)s + 0x8000u) >> 32) & 1), 1, -1, 0); } return 0;   // PRND
         default: return 1;
         }
     }
@@ -139,22 +161,24 @@ static int ppi(SH3 *c, uint16_t f) {
         logic_commit(c, dn, (uint16_t)r, shout, flags); return 0; }
     case 0x91: {                                                                                                                                              // PSHA Sx,Sy,Dz
         if (!valid_dn(dn)) return 1; int sh = (int)((sel_y(c, yy) >> 16) & 127); if (sh & 64) sh -= 128; int64_t r; int shout = 0;
-        if (sh >= 0) { r = a << sh; shout = sh ? (int)((a >> (40 - sh)) & 1) : 0; } else { int k = -sh; r = a >> k; shout = (int)((a >> (k - 1)) & 1); }
+        if (sh >= 0) { r = (int64_t)((uint64_t)a << sh); shout = sh ? (int)((a >> (40 - sh)) & 1) : 0; } else { int k = -sh; r = a >> k; shout = (int)((a >> (k - 1)) & 1); }
         arith_commit(c, dn, r, shout, flags, -1, 1); return 0; }
-    case 0x89: if (!valid_dn(dn)) return 1; arith_commit(c, dn, (((a >> 16) - 1) << 16), 0, flags, -1, 0); return 0;                                              // PDEC X
-    case 0xA9: if (!valid_dn(dn)) return 1; arith_commit(c, dn, (((b >> 16) - 1) << 16), 0, flags, -1, 0); return 0;                                              // PDEC Y
-    case 0x99: if (!valid_dn(dn)) return 1; arith_commit(c, dn, (((a >> 16) + 1) << 16), 0, flags, -1, 0); return 0;                                              // PINC X
-    case 0xB9: if (!valid_dn(dn)) return 1; arith_commit(c, dn, (((b >> 16) + 1) << 16), 0, flags, -1, 0); return 0;                                              // PINC Y
+    case 0x89: if (!valid_dn(dn)) return 1; int_commit(c, dn, (((a >> 16) - 1) * 65536), ((uint32_t)a < 0x10000u), flags); return 0;                                              // PDEC X
+    case 0xA9: if (!valid_dn(dn)) return 1; int_commit(c, dn, (((b >> 16) - 1) * 65536), ((uint32_t)b < 0x10000u), flags); return 0;                                              // PDEC Y
+    case 0x99: if (!valid_dn(dn)) return 1; int_commit(c, dn, (((a >> 16) + 1) * 65536), (int)((((uint64_t)(uint32_t)a + 0x10000u) >> 32) & 1), flags); return 0;                                              // PINC X
+    case 0xB9: if (!valid_dn(dn)) return 1; int_commit(c, dn, (((b >> 16) + 1) * 65536), (int)((((uint64_t)(uint32_t)b + 0x10000u) >> 32) & 1), flags); return 0;                                              // PINC Y
     case 0x8D: if (!valid_dn(dn)) return 1; arith_commit(c, dn, 0, 0, flags, -1, 0); return 0;                                                                    // PCLR
-    case 0xC9: if (!valid_dn(dn)) return 1; arith_commit(c, dn, -a, 0, flags, -1, 0); return 0;                                                                   // PNEG X
-    case 0xE9: if (!valid_dn(dn)) return 1; arith_commit(c, dn, -b, 0, flags, -1, 0); return 0;                                                                   // PNEG Y
+    case 0xC9: if (!valid_dn(dn)) return 1; arith_commit(c, dn, -a, ((uint32_t)a != 0), flags, -1, 0); return 0;                                                                   // PNEG X
+    case 0xE9: if (!valid_dn(dn)) return 1; arith_commit(c, dn, -b, ((uint32_t)b != 0), flags, -1, 0); return 0;                                                                   // PNEG Y
     case 0xD9: if (!valid_dn(dn)) return 1; arith_commit(c, dn, a, 0, flags, -1, 0); return 0;                                                                    // PCOPY X
     case 0xF9: if (!valid_dn(dn)) return 1; arith_commit(c, dn, b, 0, flags, -1, 0); return 0;                                                                    // PCOPY Y
+    case 0x9D: if (!valid_dn(dn)) return 1; pdmsb_commit(c, dn, a, flags); return 0;                                                                         // PDMSB Sx
+    case 0xBD: if (!valid_dn(dn)) return 1; pdmsb_commit(c, dn, b, flags); return 0;                                                                         // PDMSB Sy
     case 0xCD: if (!valid_dn(dn)) return 1; wr40(c, dn, (int32_t)c->mach); return 0;                                                                              // PSTS MACH,Dz
     case 0xDD: if (!valid_dn(dn)) return 1; wr40(c, dn, (int32_t)c->macl); return 0;                                                                              // PSTS MACL,Dz
     case 0xED: if (!valid_dn(dn)) return 1; c->mach = (uint32_t)rd40(c, dn); return 0;                                                                            // PLDS Dz,MACH
     case 0xFD: if (!valid_dn(dn)) return 1; c->macl = (uint32_t)rd40(c, dn); return 0;                                                                            // PLDS Dz,MACL
-    default: return 1;                                                                                                                                            // PDMSB, PWAD, PWSB, PSWAP: not implemented
+    default: return 1;                                                                                                                                            // anything else is reserved/unimplemented
     }
 }
 
@@ -173,13 +197,13 @@ int dsp_exec_parallel(SH3 *c, uint16_t h, uint16_t alu) {
         if (ix & 8) WR16(xaddr, xst);
         else { uint16_t v = (uint16_t)RD16(xaddr); if (xm) c->x1 = (uint32_t)v << 16; else c->x0 = (uint32_t)v << 16; }
         { int m = ix & 3; int dmx = (c->sr >> 10) & 1, dmy = (c->sr >> 11) & 1; uint32_t inc = m == 2 ? 2 : m == 3 ? c->r[8] : 0;
-          if (dmx && !dmy && m == 2) { if ((c->r[xr] & 0xFFFF) == ((c->mod >> 16) & 0xFFFF)) c->r[xr] = (c->r[xr] & 0xFFFF0000u) | (c->mod & 0xFFFF); else c->r[xr] += inc; } else c->r[xr] += inc; }
+          if (dmx && !dmy && m >= 2) { if ((c->r[xr] & 0xFFFF) == ((c->mod >> 16) & 0xFFFF)) c->r[xr] = (c->r[xr] & 0xFFFF0000u) | (c->mod & 0xFFFF); else c->r[xr] += inc; } else c->r[xr] += inc; }
     }
     if (iy) {
         if (iy & 8) WR16(yaddr, yst);
         else { uint16_t v = (uint16_t)RD16(yaddr); if (ym) c->y1 = (uint32_t)v << 16; else c->y0 = (uint32_t)v << 16; }
         { int m = iy & 3; int dmy = (c->sr >> 11) & 1; uint32_t inc = m == 2 ? 2 : m == 3 ? c->r[9] : 0;
-          if (dmy && m == 2) { if ((c->r[yr] & 0xFFFF) == ((c->mod >> 16) & 0xFFFF)) c->r[yr] = (c->r[yr] & 0xFFFF0000u) | (c->mod & 0xFFFF); else c->r[yr] += inc; } else c->r[yr] += inc; }
+          if (dmy && m >= 2) { if ((c->r[yr] & 0xFFFF) == ((c->mod >> 16) & 0xFFFF)) c->r[yr] = (c->r[yr] & 0xFFFF0000u) | (c->mod & 0xFFFF); else c->r[yr] += inc; } else c->r[yr] += inc; }
     }
     return 0;
 }

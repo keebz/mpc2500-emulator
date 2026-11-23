@@ -86,6 +86,7 @@ extern uint8_t soc_lo[SOC_SIZE];
 extern uint8_t soc_hi[0x200];
 extern uint16_t adc10[4][4];           // ADC value per [mux line][channel], 10 bit (left aligned x4)
 void soc_reset(void);
+void soc_dump_intc(void);
 uint32_t soc_read(uint32_t phys, int size);          // 0x04000000-0x04000FFF
 void soc_write(uint32_t phys, uint32_t val, int size);
 uint32_t p4_read(uint32_t addr, int size);           // 0xFFFFFE00-0xFFFFFFFF

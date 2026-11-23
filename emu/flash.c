@@ -73,7 +73,7 @@ static void erase_sector(uint32_t a) {
 
 void flash_write(uint32_t a, uint32_t val, int size) {
     uint32_t cmd = val & 0xFF, lo = a & 0xFFF;
-    if (cmd == 0xF0) { cycle = 0; mode = M_READ; erase_pending = 0; dbg_update_windows(); return; }   // reset (also leaves autoselect/CFI)
+    if (cycle != 3 && getenv("FLASH_LOG") && cmd != 0xAA && cmd != 0x55) fprintf(stderr, "flash: cmd %02x @%06x pc=%08x\n", cmd, a, cpu.pc); if (cmd == 0xF0) { cycle = 0; mode = M_READ; erase_pending = 0; dbg_update_windows(); return; }   // reset (also leaves autoselect/CFI)
     switch (cycle) {
     case 0:
         if (lo == 0xAAA && cmd == 0xAA) cycle = 1;
@@ -86,7 +86,7 @@ void flash_write(uint32_t a, uint32_t val, int size) {
     case 2:
         if (lo == 0xAAA && cmd == 0xA0) cycle = 3;
         else if (lo == 0xAAA && cmd == 0x80) cycle = 4;
-        else if (lo == 0xAAA && cmd == 0x90) { mode = M_AUTOSELECT; cycle = 0; dbg_update_windows(); }
+        else if (lo == 0xAAA && cmd == 0x90) { if (getenv("FLASH_LOG")) fprintf(stderr, "flash: autoselect pc=%08x\n", cpu.pc); mode = M_AUTOSELECT; cycle = 0; dbg_update_windows(); }
         else if (lo == 0xAAA && cmd == 0x20) { bypass = 1; cycle = 0; }
         else cycle = 0;
         break;

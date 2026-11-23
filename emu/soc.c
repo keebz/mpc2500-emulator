@@ -104,6 +104,32 @@ static void tmu_irq(void) {
 // One 32-bit frame per frame-sync (44.1 kHz = 1500 instructions). DMAC ch0 moves DMATCR frames from the SIOF receive FIFO to memory,
 // sets CHCR.TE and raises DEI0 (INTEVT2 0x800) when IE is set. SIFTXI (INTEVT2 0xB20) is raised every `siof_irq_div` frames while
 // SIIER.TDREQE is set.
+// ---- ADC control/status (manual section 28): ADST starts a conversion that ends after 536 (CKS=0) or 266 (CKS=1) Pphi states; the ADF flag
+// is set when all selected channels are done, ADST clears itself except in scan mode, and ADF is cleared only by writing 0 to it.
+// Pphi is taken as 33.075 MHz, i.e. two emulated instructions per state.
+static uint64_t adc_done_at; static int adc_running;
+static int adc_channels(uint8_t csr) {
+    int ch = csr & 7, multi = (csr >> 4) & 1;
+    if (ch < 2) return 0;                                   // reserved selections
+    if (ch == 2) return 1; if (ch == 3) return multi ? 2 : 1;
+    return multi ? ch - 3 : 1;                              // AN4: 1, AN4-5: 2, AN4-6: 3, AN4-7: 4 (multi); single mode: one channel
+}
+static void adc_start(void) {
+    uint8_t csr = soc_lo[0x90]; int n = adc_channels(csr);
+    if (!n) { soc_lo[0x90] &= (uint8_t)~0x20; adc_running = 0; return; }
+    adc_running = 1; adc_done_at = cpu.cycles + (uint64_t)n * ((csr & 8) ? 266 : 536) * 2;
+}
+static void adc_service(void) {
+    if (!adc_running || cpu.cycles < adc_done_at) return;
+    uint8_t csr = soc_lo[0x90]; int scan = ((csr >> 4) & 1) && (soc_lo[0x92] & 0x20);
+    soc_lo[0x90] |= 0x80;
+    if (scan && (csr & 0x20)) adc_start(); else { soc_lo[0x90] &= (uint8_t)~0x20; adc_running = 0; }
+}
+static void raise_module_irq(int pri, uint32_t code2) { intevt2 = code2; soc_irq_count++; sh3_interrupt(&cpu, 0x200u + 0x20u * (uint32_t)(15 - pri)); }
+static int adc_irq_ready(void) {                         // ADI: ADF = 1 and ADIE = 1, level triggered
+    if ((soc_lo[0x90] & 0xC0) != 0xC0 || (cpu.sr & SR_BL) || ((cpu.sr >> 16) & 0xFFF) || cpu.loop_pending) return 0;
+    return (rd16(&soc_lo[0x1A]) & 15) > ((cpu.sr >> 4) & 15);
+}
 static int dei0_pending_unused;
 static void siof_frame(void) {
     siof_frames++;
@@ -139,13 +165,26 @@ void soc_service(void) {
     tmu_tick(dcyc); tmu_irq();
     if (cpu.cycles >= next_pad_refresh) { next_pad_refresh = cpu.cycles + 50000; pads_apply(); }
     panel_wheel_service();
+    adc_service();
     while (cpu.cycles >= frame_next) { frame_next += STEPS_PER_FRAME; siof_frame(); }
-    if (siof_dei0_ready()) { intevt2 = 0x800; soc_irq_count++; sh3_interrupt(&cpu, 0x600); }
-    else if (siof_txi_ready()) { intevt2 = 0xB20; soc_irq_count++; sh3_interrupt(&cpu, 0x600); }
+    // Module interrupts (INTEVT = level code H'200 + 20*(15-level), INTEVT2 = source code). The highest priority level wins; ties go to the
+    // order DMAC, ADC, SIOF. TMU interrupts are handled above (their INTEVT is the fixed source code).
+    if (siof_dei0_ready()) raise_module_irq((rd16(&soc_lo[0x1A]) >> 12) & 15, 0x800);
+    else if (adc_irq_ready()) raise_module_irq(rd16(&soc_lo[0x1A]) & 15, 0x980);
+    else if (siof_txi_ready()) raise_module_irq(rd16(&soc_lo[0x220]) & 15, 0xB20);
+}
+
+// Prints the interrupt priority registers and the enable bits of the peripherals the emulator can raise (for firmware debugging)
+void soc_dump_intc(void) {
+    uint16_t a = rd16(&soc_hi[0x1E2]), b = rd16(&soc_hi[0x1E4]);
+    printf("INTC: IPRA=%04x IPRB=%04x IPRC=%04x IPRD=%04x IPRE=%04x IPRF=%04x IPRG=%04x  (priority nibbles; 0 = source masked)\n", a, b,
+           rd16(&soc_lo[0x16]), rd16(&soc_lo[0x18]), rd16(&soc_lo[0x1A]), rd16(&soc_lo[0x220]), rd16(&soc_lo[0x222]));
+    printf("      TSTR=%02x TCR0=%04x TCR1=%04x TCR2=%04x  ADCSR=%02x  DMAC0 CHCR=%08x  SIIER=%04x  interrupts taken: %llu\n", soc_hi[0x92], rd16(&soc_hi[0x9C]),
+           rd16(&soc_hi[0xA8]), rd16(&soc_hi[0xB4]), soc_lo[0x90], rd32(&soc_lo[0x2C]), rd16(&soc_lo[0xD6]), (unsigned long long)soc_irq_count);
 }
 
 void soc_reset(void) {
-    memset(soc_lo, 0, sizeof soc_lo); memset(soc_hi, 0, sizeof soc_hi); memset(adc10, 0, sizeof adc10);
+    memset(soc_lo, 0, sizeof soc_lo); memset(soc_hi, 0, sizeof soc_hi); memset(adc10, 0, sizeof adc10); adc_running = 0; soc_lo[0x92] = 0x07;
     memset(tmu_acc, 0, sizeof tmu_acc);
     intevt2 = 0; last_cycles = 0; frame_next = STEPS_PER_FRAME; next_pad_refresh = 0; txi_pending = 0;
     siof_frames = dmac_done = soc_irq_count = 0;
@@ -169,10 +208,19 @@ uint32_t soc_read(uint32_t a, int size) {
     if (a == 0x0400012C) v = panel_port_pg();
     if (a == 0x04000138) v = panel_port_pm();
     if (a == 0x0400012A) v = panel_port_pf();
+    if (a == 0x04000158) v = 0x0060;          // SCSSR2 (SCIF / MIDI UART): transmitter always empty (TDFE | TEND), no receive data, no errors
+    if (a == 0x0400015E) v = 0;               // SCFDR2: both FIFOs empty
     return v;
 }
 void soc_write(uint32_t a, uint32_t val, int size) {
     uint32_t o = a - SOC_BASE;
+    if (a == 0x04000090 && size == 1) {                                              // ADCSR: ADF can only be cleared; other bits are plain storage
+        uint8_t old = soc_lo[0x90], nv = (uint8_t)((val & 0x7F) | (old & val & 0x80));
+        soc_lo[0x90] = nv;
+        if (nv & 0x20) { if (!adc_running || !(old & 0x20)) adc_start(); } else adc_running = 0;
+        return;
+    }
+    if ((a == 0x04000092) && size == 1) { soc_lo[0x92] = (uint8_t)((val & 0xF8) | 0x07); return; }       // ADCR: bits 2:0 read as 1 (initial H'07)
     if (a == 0x040000E0 && size == 4) audio_push(val);                               // SIOF transmit FIFO
     for (int i = 0; i < size; i++) soc_lo[o + i] = (uint8_t)(val >> (8 * i));
     if (spd_present && ((o + size > 0x126 && o <= 0x126) || (o + size > 0x106 && o <= 0x107))) spd_line_update();
