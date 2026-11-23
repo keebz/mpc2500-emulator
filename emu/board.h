@@ -102,6 +102,7 @@ void spd_line_update(void);
 
 // ---- audio.c -------------------------------------------------------------------------------------------------------
 void audio_push(uint32_t siof_word);   // one 32-bit word written to the SIOF transmit FIFO
+extern int audio_shift;                // 20-bit -> 16-bit right shift (default 3)
 void audio_capture(int on);
 int  audio_save_wav(const char *path);
 void audio_live_enable(int on);
@@ -123,6 +124,7 @@ uint8_t panel_port_pm(void);           // PMDR (key rows 6:0, active low)
 uint8_t panel_port_pg(void);           // PGDR (key rows 10:7, card detect)
 uint8_t panel_port_pf(void);           // PFDR (wheel quadrature)
 int  panel_led(int col, int bit);      // 1 if the LED is lit
+void panel_led_strobe(uint32_t pcdr, uint8_t scpdr);   // latch LED row data (SCPDR, active low) for the strobed column
 void panel_wheel_service(void);
 int  wheel_pending(void);              // a turn is still being delivered to the firmware
 

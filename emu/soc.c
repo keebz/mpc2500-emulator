@@ -73,7 +73,9 @@ void spd_line_update(void) {
 }
 
 // ================================================================== TMU
-// TMU0 tick = 1/1.662 MHz (the OS time helper at 0x8855F1EC: 1 ms = 1662 ticks, so Pphi = 26.6 MHz). `per` is in units of 1/100 instruction.
+// Clocks: the CPU board crystal is 13.3 MHz; FRQCR = H'A101 with the on-chip x4 PLL gives I:B:P = 12:4:2, i.e. Iphi 159.6 MHz, Bphi 53.2 MHz and
+// Pphi 26.6 MHz (the OS time helper at 0x8855F1EC counts 1 ms = 1662 TMU0 ticks of Pphi/16 = 1.6625 MHz, which confirms 26.6 MHz).
+// One emulated instruction is 1/CPU_HZ s (see board.h), so one Pphi cycle = CPU_HZ / 26.6 MHz = 2.4868 instructions; `per` is in 1/10000 instruction.
 static void tmu_tick(uint64_t dcyc) {
     uint8_t tstr = soc_hi[0x92];
     static const int presc[8] = { 4, 16, 64, 256, 1024, 4, 4, 4 };
@@ -81,8 +83,8 @@ static void tmu_tick(uint64_t dcyc) {
         if (!(tstr & (1 << n))) continue;
         int base = 0xFE94 + 12 * n;
         uint16_t tcr = *tmu16(base + 8);
-        uint64_t per = (uint64_t)presc[tcr & 7] * 249;
-        tmu_acc[n] += dcyc * 100;
+        uint64_t per = (uint64_t)presc[tcr & 7] * 24868;
+        tmu_acc[n] += dcyc * 10000;
         while (tmu_acc[n] >= per) {                  // (a division here showed up as ~7% of total run time)
             tmu_acc[n] -= per;
             uint32_t *cnt = tmu32(base + 4);
@@ -179,7 +181,9 @@ void soc_dump_intc(void) {
     uint16_t a = rd16(&soc_hi[0x1E2]), b = rd16(&soc_hi[0x1E4]);
     printf("INTC: IPRA=%04x IPRB=%04x IPRC=%04x IPRD=%04x IPRE=%04x IPRF=%04x IPRG=%04x  (priority nibbles; 0 = source masked)\n", a, b,
            rd16(&soc_lo[0x16]), rd16(&soc_lo[0x18]), rd16(&soc_lo[0x1A]), rd16(&soc_lo[0x220]), rd16(&soc_lo[0x222]));
-    printf("      TSTR=%02x TCR0=%04x TCR1=%04x TCR2=%04x  ADCSR=%02x  DMAC0 CHCR=%08x  SIIER=%04x  interrupts taken: %llu\n", soc_hi[0x92], rd16(&soc_hi[0x9C]),
+    printf("      SIOF: SIMDR=%04x SISCR=%04x SITDAR=%04x SIRDAR=%04x SICDAR=%04x SICTR=%04x SIFCTR=%04x SITCR=%08x\n", rd16(&soc_lo[0xC0]), rd16(&soc_lo[0xC2]), rd16(&soc_lo[0xC4]), rd16(&soc_lo[0xC6]), rd16(&soc_lo[0xC8]), rd16(&soc_lo[0xCC]), rd16(&soc_lo[0xD0]), rd32(&soc_lo[0xE8]));
+    printf("      FRQCR=%04x STBCR=%02x  ", rd16(&soc_hi[0x180]), soc_hi[0x102]);
+    printf("TSTR=%02x TCR0=%04x TCR1=%04x TCR2=%04x  ADCSR=%02x  DMAC0 CHCR=%08x  SIIER=%04x  interrupts taken: %llu\n", soc_hi[0x92], rd16(&soc_hi[0x9C]),
            rd16(&soc_hi[0xA8]), rd16(&soc_hi[0xB4]), soc_lo[0x90], rd32(&soc_lo[0x2C]), rd16(&soc_lo[0xD6]), (unsigned long long)soc_irq_count);
 }
 
@@ -214,6 +218,7 @@ uint32_t soc_read(uint32_t a, int size) {
 }
 void soc_write(uint32_t a, uint32_t val, int size) {
     uint32_t o = a - SOC_BASE;
+    if (a == 0x04000124 && size == 1) panel_led_strobe(val, soc_lo[0x136]);          // PCDR: column strobe; the LED row data was put on SCPDR first
     if (a == 0x04000090 && size == 1) {                                              // ADCSR: ADF can only be cleared; other bits are plain storage
         uint8_t old = soc_lo[0x90], nv = (uint8_t)((val & 0x7F) | (old & val & 0x80));
         soc_lo[0x90] = nv;

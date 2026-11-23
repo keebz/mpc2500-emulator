@@ -65,14 +65,21 @@ void panel_wheel_service(void) {
     if (idx == 4) { idx = 0; pending -= dir; }
 }
 
+// LEDs: the front-panel LED matrix shares the column strobe (PCDR bits 7:3). Before strobing column c the firmware puts the LED row
+// data on port SCPDR (0xA4000136, active low: a 0 bit lights the LED); the column's LEDs are latched while it is strobed and keep
+// that state until the column is strobed again. (Observed with the stock OS: it writes SCPDR = ~table[c] then PCDR = 0x07 | 8<<c.)
+static uint8_t led_latch[PANEL_COLS];
+void panel_led_strobe(uint32_t pcdr, uint8_t scpdr) {
+    uint8_t pc = (uint8_t)(pcdr & 0xF8);
+    for (int c = 0; c < PANEL_COLS; c++) if (pc == (8u << c)) led_latch[c] = (uint8_t)~scpdr;
+}
 int panel_led(int col, int bit) {
-    // The stock OS keeps the LED states in a 5-byte table (one byte per matrix column, 4 bits each) at 0x881C005C.
     if (col < 0 || col >= PANEL_COLS || bit < 0 || bit > 7) return 0;
-    return (ram[0x1c005c + col] >> bit) & 1;
+    return (led_latch[col] >> bit) & 1;
 }
 
 void panel_reset(void) {
     memset(pad_velocity, 0, sizeof pad_velocity); memset(pad_hold_until, 0, sizeof pad_hold_until);
-    pending = idx = 0; pins = 3; seen = 1; next_at = last_move = 0; dir = 1;
+    memset(led_latch, 0, sizeof led_latch); pending = idx = 0; pins = 3; seen = 1; next_at = last_move = 0; dir = 1;
     /* held keys stay held across a power cycle (the user's finger does not move) */
 }

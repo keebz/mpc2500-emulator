@@ -40,6 +40,7 @@ Accepted firmware: full Akai/JJOS builds (`.bin`), run-in-place test images (`.o
 | Mouse wheel, drag on the jog wheel, `[` `]` | DATA wheel |
 | Keyboard | mapped per `panel_map.txt` (REC `R`, OVER DUB `O`, STOP `X`, PLAY `Space`, PLAY START `Z`, MODE `D`, MAIN `M`, DATA -/+ `-` `=`) |
 | Hold `Tab` | fast-forward |
+| `--audio-shift N` | output level: 20-bit OS samples >> N (default 3; 4 = DAC-faithful, 2 = louder, clips) |
 | `Ctrl+R` | power cycle |
 | `Esc` | quit |
 
@@ -52,6 +53,7 @@ make -C emu asan         # address/UB sanitizer build
 python3 tests/golden.py --bin emu/mpc2500emu_hl -j 7            # needs the firmware files under archive/ (see tests/golden.py)
 python3 tests/golden.py --bin emu/mpc2500emu_hl --raw -j 7      # same, through the native firmware loader
 ```
+`python3 tests/dsp_diff.py` and `python3 tests/cpu_diff.py` compare the CPU/DSP against independent models written from the Renesas manual (no firmware needed).
 The golden suite boots each firmware, presses keys, and compares LCD frames and audio against recorded hashes. CPU correctness is checked against an independent reference (`tests/cpu_diff.*`).
 
 ## Layout

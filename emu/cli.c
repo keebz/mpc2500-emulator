@@ -21,6 +21,7 @@ static void usage(const char *prog) {
            "  --donor FILE        full build to take the boot block from when running an OS-only .SOS\n"
            "  --card IMAGE        CompactFlash card image to insert (default: card/card.img if present)\n"
            "  --ram MB            installed memory: 0 = stock 16 MB, otherwise a SODIMM of that size (default 128)\n"
+           "  --audio-shift N     right shift from the 20-bit OS sample words to 16 bit (default 3; 4 = the full 20-bit DAC range, 2 = louder but clips)\n"
            "  --list              list the firmware files found and exit\n"
            "  --headless          no window: run --steps N instructions, then print a summary\n"
            "  --skin DIR          front-panel artwork folder (default: skin)\n"
@@ -48,6 +49,7 @@ int main(int argc, char **argv) {
         else if (!strcmp(a, "--donor") && i + 1 < argc) donor = argv[++i];
         else if (!strcmp(a, "--card") && i + 1 < argc) card_path = argv[++i];
         else if (!strcmp(a, "--ram") && i + 1 < argc) ram_mb = atoi(argv[++i]);
+        else if (!strcmp(a, "--audio-shift") && i + 1 < argc) audio_shift = atoi(argv[++i]);
         else if (!strcmp(a, "--skin") && i + 1 < argc) skin = argv[++i];
         else if (!strcmp(a, "--keymap") && i + 1 < argc) keymap = argv[++i];
         else if (!strcmp(a, "--save-flash") && i + 1 < argc) save_flash = argv[++i];

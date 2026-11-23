@@ -8,9 +8,9 @@
 
 static int32_t *cap_buf; static size_t cap_n, cap_cap; static int cap_on;
 static uint32_t ring[1 << 16]; static uint32_t ring_w, ring_r; static int live_on;
-static unsigned wcount, hi7, frame_ix;
+static unsigned wcount, hi7, frame_ix; static int32_t left_v;
 
-void audio_reset(void) { wcount = hi7 = frame_ix = 0; ring_w = ring_r = 0; }
+void audio_reset(void) { wcount = hi7 = frame_ix = 0; left_v = 0; ring_w = ring_r = 0; }
 
 static void emit(uint32_t w) {
     if (live_on) { ring[ring_w & 0xFFFF] = w; __atomic_store_n(&ring_w, ring_w + 1, __ATOMIC_RELEASE); }
@@ -19,12 +19,21 @@ static void emit(uint32_t w) {
     cap_buf[cap_n++] = (int32_t)w;
 }
 
+// Output scaling: the OS sample words are 20-bit; they are shifted right by audio_shift (default 3) to 16 bit. The level mapping to the real
+// DAC full scale is not known (a normalised kit sample at velocity 100 peaks at ~0.35 of 16-bit full scale at shift 4 and clips at shift 2); use a larger shift if
+// clipping is heard. --audio-shift N on the command line.
+int audio_shift = 3;
+static int clip16(int32_t v) { v >>= audio_shift; return v > 32767 ? 32767 : v < -32768 ? -32768 : v; }
+
+// Words come in pairs (hi7, lo13) = one 20-bit sample; two consecutive pairs make one stereo frame: left, then right. (With a centred
+// mono voice both are equal, which is all the captured test material has shown; a hard-panned voice would show the difference.)
 void audio_push(uint32_t w) {
     unsigned k = wcount++ & 3;
     if (k == 0) hi7 = w & 0x7F;
     else if (k == 1) {
         int32_t v = (int32_t)((hi7 << 13) | (w & 0x1FFF)); if (v & 0x80000) v -= 0x100000;
-        if ((frame_ix++ & 1) == 0) { v /= 4; if (v > 32767) v = 32767; if (v < -32768) v = -32768; emit(((uint32_t)(uint16_t)v << 16) | (uint16_t)v); }
+        if ((frame_ix++ & 1) == 0) left_v = v;
+        else emit(((uint32_t)(uint16_t)clip16(left_v) << 16) | (uint16_t)clip16(v));
     }
 }
 

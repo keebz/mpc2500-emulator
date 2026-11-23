@@ -3,25 +3,30 @@
   "main_a.bin": "d9a2c8bf47a418f3"
  },
  "jv263_boot": {
-  "main_a.bin": "d7d61a6dda1d4a19"
+  "main_a.bin": "a58563cbacddb164"
  },
  "jv313_boot": {
   "main_a.bin": "241b4cb46cd1354c"
  },
  "kit_audio": {
   "p14_a.bin": "49b1540dc63ad182",
-  "p14_a.wav": "f1cc93dfdcf41f71",
+  "p14_a.wav": "4629ff3b9e5ca542",
   "p16_a.bin": "11c53ddd25340f94",
-  "p16_a.wav": "e45d9cd64f4b2d8e",
+  "p16_a.wav": "7bdd20a5f26287eb",
   "p1_a.bin": "fb1a330f06576bb6",
-  "p1_a.wav": "01cf3e1cec3fee0d",
+  "p1_a.wav": "145949d09e36f013",
   "p5_a.bin": "92500e30ef506dfe",
-  "p5_a.wav": "32d1edbf4f6271d0",
+  "p5_a.wav": "0cf4141fb618ae4c",
   "p9_a.bin": "ce90acab877a4497",
-  "p9_a.wav": "6920054dab7ce99e"
+  "p9_a.wav": "9f720f9f477f78bc"
  },
  "light100_boot": {
   "main_a.bin": "dd41a7e1cf489787"
+ },
+ "pan_stereo": {
+  "left_a.wav": "e678e9495f84c8f2",
+  "mid_a.wav": "e9e1da180adacfce",
+  "right_a.wav": "a96e36c9b382247e"
  },
  "stock_boot": {
   "main_a.bin": "d9a2c8bf47a418f3"

@@ -42,6 +42,10 @@ def scenarios():
                   same=[("w1_a.bin", "b1_a.bin"), ("w3_a.bin", "b3_a.bin"), ("w9_a.bin", "b9_a.bin"), ("w5d2_a.bin", "b3x_a.bin")]))
     s.append(dict(name="kit_audio", img="stock", boot=300_000_000, prelude=KIT_PRELUDE,
                   forks=dict([("p%d" % n, "audio 1;padhit %d 100;wait 80000000;audiosave a;dump a" % n) for n in (1, 5, 9, 14, 16)])))
+    mixer = "tap 0 2;wait 20000000;press 0 3;padhit 8 100;release 0 3;wait 30000000;tap 3 3;wait 5000000;"       # MIXER page, pan knob of pad A01
+    hit = "audio 1;padhit 1 100;wait 60000000;audiosave a"
+    s.append(dict(name="pan_stereo", img="stock", boot=300_000_000, prelude=KIT_PRELUDE,
+                  forks={"left": mixer + "wheel -1 60;" + hit, "right": mixer + "wheel 1 60;" + hit, "mid": mixer + hit}))
     s.append(dict(name="jv313_boot", img="jv313", boot=300_000_000, forks={"main": "wait 1000000;dump a"}))
     for k in ("xl390", "light100", "jv263"):
         s.append(dict(name=k + "_boot", img=k, boot=400_000_000, env={"FLASH_MODE": "full"}, forks={"main": "wait 1000000;dump a"}))
