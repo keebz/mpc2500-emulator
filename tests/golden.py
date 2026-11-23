@@ -37,8 +37,8 @@ def scenarios():
     # the DATA wheel must do exactly what the equivalent number of DATA +/- button presses does (Sq field, starts at 01)
     taps = lambda n: "tap 4 4;" * n
     s.append(dict(name="wheel_parity", img="stock", boot=300_000_000,
-                  forks={"w1": "wheel 1 1;dump a", "b1": taps(1) + "dump a", "w3": "wheel 1 3;dump a", "b3": taps(3) + "dump a",
-                         "w9": "wheel 1 9;dump a", "b9": taps(9) + "dump a", "w5d2": "wheel 1 5;wheel -1 2;dump a", "b3x": taps(3) + "dump a"},
+                  forks={"w1": "wheel 1 1;wait 20000000;dump a", "b1": taps(1) + "wait 20000000;dump a", "w3": "wheel 1 3;wait 20000000;dump a", "b3": taps(3) + "wait 20000000;dump a",
+                         "w9": "wheel 1 9;wait 20000000;dump a", "b9": taps(9) + "wait 20000000;dump a", "w5d2": "wheel 1 5;wheel -1 2;wait 20000000;dump a", "b3x": taps(3) + "wait 20000000;dump a"},
                   same=[("w1_a.bin", "b1_a.bin"), ("w3_a.bin", "b3_a.bin"), ("w9_a.bin", "b9_a.bin"), ("w5d2_a.bin", "b3x_a.bin")]))
     s.append(dict(name="kit_audio", img="stock", boot=300_000_000, prelude=KIT_PRELUDE,
                   forks=dict([("p%d" % n, "audio 1;padhit %d 100;wait 80000000;audiosave a;dump a" % n) for n in (1, 5, 9, 14, 16)])))

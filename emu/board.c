@@ -104,7 +104,7 @@ int board_run(uint64_t n) {
                 sh3_step(&cpu);
                 if (cpu.illegal) break;
             }
-        } else sh3_run(&cpu, BATCH, pc_ring, &pc_ring_i);
+        } else sh3_run(&cpu, soc_irq_blocked ? 4 : BATCH, pc_ring, &pc_ring_i);
         if (cpu.illegal) { report_illegal(cpu.fault_pc ? cpu.fault_pc : cpu.pc); halted = 1; return 1; }
         fault_check();
         if (fault_fatal) { fault_report(fault_fatal - 1, cpu.pc); halted = 1; return 1; }

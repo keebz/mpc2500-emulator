@@ -6,8 +6,20 @@
 uint64_t dsp_hist[256];          // ALU opcode (hi byte of ALU word) execution counts, for debugging
 uint64_t dsp_hist_unimpl[256];
 
-#define RD16(a) (c->bus.read(c->bus.ctx,(a),2))
-#define WR16(a,v) c->bus.write(c->bus.ctx,(a),(v),2)
+// X/Y memory transfers (addresses 0xA5000000..0xA501FFFF) go straight to the memory window when it is enabled (it is bypassed while a
+// watchpoint is active so the bus can see every access)
+static inline uint32_t rd16x(SH3 *c, uint32_t a) {
+    const FastWin *w = &c->win[2];
+    if (w->ptr && (a >> 17) == (0xA5000000u >> 17)) { uint16_t h; memcpy(&h, w->ptr + (a & 0x1FFFEu), 2); return h; }
+    return c->bus.read(c->bus.ctx, a, 2);
+}
+static inline void wr16x(SH3 *c, uint32_t a, uint32_t v) {
+    const FastWin *w = &c->win[2];
+    if (w->ptr && w->writable && (a >> 17) == (0xA5000000u >> 17)) { uint16_t h = (uint16_t)v; memcpy(w->ptr + (a & 0x1FFFEu), &h, 2); return; }
+    c->bus.write(c->bus.ctx, a, v, 2);
+}
+#define RD16(a) rd16x(c, (a))
+#define WR16(a,v) wr16x(c, (a), (v))
 
 static int64_t sx40(int64_t v) { return (v << 24) >> 24; }          // sign-extend 40 bits
 /* 40-bit view of a register by Dn/Ds code: A0=7 A1=5 accumulators carry guard bits; others sign-extended 32 */

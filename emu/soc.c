@@ -11,7 +11,9 @@ uint64_t soc_irq_count, siof_frames, dmac_done;
 unsigned siof_irq_div = 1;
 
 static uint32_t intevt2;                                   // INTEVT2 @ 0xA4000000: code of the interrupt that entered the 0x600 vector
-static uint64_t last_cycles, frame_next = STEPS_PER_FRAME, next_pad_refresh;
+uint32_t steps_per_frame = 1900;
+int soc_irq_blocked;                   // an interrupt is waiting only for BL / a DSP repeat loop to end: run short batches until it can be taken
+static uint64_t last_cycles, frame_next, next_pad_refresh;
 static int txi_pending;
 static uint64_t tmu_acc[3];
 
@@ -83,7 +85,7 @@ static void tmu_tick(uint64_t dcyc) {
         if (!(tstr & (1 << n))) continue;
         int base = 0xFE94 + 12 * n;
         uint16_t tcr = *tmu16(base + 8);
-        uint64_t per = (uint64_t)presc[tcr & 7] * 24868;
+        uint64_t per = (uint64_t)presc[tcr & 7] * 24868 * steps_per_frame / 1500;
         tmu_acc[n] += dcyc * 10000;
         while (tmu_acc[n] >= per) {                  // (a division here showed up as ~7% of total run time)
             tmu_acc[n] -= per;
@@ -93,12 +95,14 @@ static void tmu_tick(uint64_t dcyc) {
     }
 }
 static void tmu_irq(void) {
-    if (cpu.sr & SR_BL) return;
     uint32_t ipra = *tmu16(0xFEE2); int imask = (cpu.sr >> 4) & 15;
     for (int n = 0; n < 3; n++) {
         uint16_t tcr = *tmu16(0xFE94 + 12 * n + 8);
         int pri = (ipra >> (12 - 4 * n)) & 15;
-        if ((tcr & 0x100) && (tcr & 0x20) && pri > imask) { sh3_interrupt(&cpu, 0x400 + 0x20u * n); return; }
+        if ((tcr & 0x100) && (tcr & 0x20) && pri > imask) {
+            if (cpu.sr & SR_BL) { soc_irq_blocked = 1; return; }
+            sh3_interrupt(&cpu, 0x400 + 0x20u * n); return;
+        }
     }
 }
 
@@ -129,8 +133,9 @@ static void adc_service(void) {
 }
 static void raise_module_irq(int pri, uint32_t code2) { intevt2 = code2; soc_irq_count++; sh3_interrupt(&cpu, 0x200u + 0x20u * (uint32_t)(15 - pri)); }
 static int adc_irq_ready(void) {                         // ADI: ADF = 1 and ADIE = 1, level triggered
-    if ((soc_lo[0x90] & 0xC0) != 0xC0 || (cpu.sr & SR_BL) || ((cpu.sr >> 16) & 0xFFF) || cpu.loop_pending) return 0;
-    return (rd16(&soc_lo[0x1A]) & 15) > ((cpu.sr >> 4) & 15);
+    if ((soc_lo[0x90] & 0xC0) != 0xC0 || (rd16(&soc_lo[0x1A]) & 15) <= ((cpu.sr >> 4) & 15)) return 0;
+    if ((cpu.sr & SR_BL) || ((cpu.sr >> 16) & 0xFFF) || cpu.loop_pending) { soc_irq_blocked = 1; return 0; }
+    return 1;
 }
 static int dei0_pending_unused;
 static void siof_frame(void) {
@@ -149,20 +154,21 @@ static int dsp_loop_active(void) { return cpu.loop_pending || ((cpu.sr >> 16) & 
 static int siof_txi_ready(void) {
     if (!txi_pending) return 0;
     if (!(rd16(&soc_lo[0xD6]) & 0x1000)) { txi_pending = 0; return 0; }
-    if (cpu.sr & SR_BL) return 0;
-    if (dsp_loop_active()) return 0;
     int pri = rd16(&soc_lo[0x220]) & 15, imask = (cpu.sr >> 4) & 15;
-    if (pri > imask) { txi_pending = 0; return 1; }
-    return 0;
+    if (pri <= imask) return 0;
+    if ((cpu.sr & SR_BL) || dsp_loop_active()) { soc_irq_blocked = 1; return 0; }
+    txi_pending = 0; return 1;
 }
 static int siof_dei0_ready(void) {
-    if (((rd32(&soc_lo[0x2C]) & 6) != 6) || (cpu.sr & SR_BL)) return 0;      // DEI0 is level triggered: CHCR.TE = 1 and CHCR.IE = 1
+    if ((rd32(&soc_lo[0x2C]) & 6) != 6) return 0;                            // DEI0 is level triggered: CHCR.TE = 1 and CHCR.IE = 1
     int pri = (rd16(&soc_lo[0x1A]) >> 12) & 15, imask = (cpu.sr >> 4) & 15;
-    if (dsp_loop_active()) return 0;                                         // no interrupts inside a DSP repeat
-    return pri > imask;
+    if (pri <= imask) return 0;
+    if ((cpu.sr & SR_BL) || dsp_loop_active()) { soc_irq_blocked = 1; return 0; }   // no interrupts inside a DSP repeat or with BL set
+    return 1;
 }
 
 void soc_service(void) {
+    soc_irq_blocked = 0;
     uint64_t dcyc = cpu.cycles - last_cycles; last_cycles = cpu.cycles;
     tmu_tick(dcyc); tmu_irq();
     if (cpu.cycles >= next_pad_refresh) { next_pad_refresh = cpu.cycles + 50000; pads_apply(); }

@@ -21,7 +21,7 @@ static void usage(const char *prog) {
            "  --donor FILE        full build to take the boot block from when running an OS-only .SOS\n"
            "  --card IMAGE        CompactFlash card image to insert (default: card/card.img if present)\n"
            "  --ram MB            installed memory: 0 = stock 16 MB, otherwise a SODIMM of that size (default 128)\n"
-           "  --audio-shift N     right shift from the 20-bit OS sample words to 16 bit (default 3; 4 = the full 20-bit DAC range, 2 = louder but clips)\n"
+           "  --audio-shift N     right shift from the 20-bit OS sample words to 16 bit (default 4 = the full 20-bit DAC range; smaller = louder but clips in WAV capture)\n"
            "  --list              list the firmware files found and exit\n"
            "  --headless          no window: run --steps N instructions, then print a summary\n"
            "  --skin DIR          front-panel artwork folder (default: skin)\n"
@@ -39,6 +39,7 @@ int main(int argc, char **argv) {
     enum { M_AUTO, M_EXP, M_SWEEP, M_STEPS } mode = M_AUTO;
     uint64_t steps = 5000000; const char *exp_dir = 0; uint64_t boot_steps = 300000000ull; int exp_n = 0; char **exp_specs = 0;
     if (getenv("FAULT_STRICT")) fault_strict = 1;
+    if (getenv("STEPS_PER_FRAME")) steps_per_frame = (uint32_t)atoi(getenv("STEPS_PER_FRAME"));
     if (getenv("IRQ_DIV")) siof_irq_div = (unsigned)atoi(getenv("IRQ_DIV")) ? (unsigned)atoi(getenv("IRQ_DIV")) : 1;
 
     for (int i = 1; i < argc; i++) {

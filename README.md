@@ -40,11 +40,15 @@ Accepted firmware: full Akai/JJOS builds (`.bin`), run-in-place test images (`.o
 | Mouse wheel, drag on the jog wheel, `[` `]` | DATA wheel |
 | Keyboard | mapped per `panel_map.txt` (REC `R`, OVER DUB `O`, STOP `X`, PLAY `Space`, PLAY START `Z`, MODE `D`, MAIN `M`, DATA -/+ `-` `=`) |
 | Hold `Tab` | fast-forward |
-| `--audio-shift N` | output level: 20-bit OS samples >> N (default 3; 4 = DAC-faithful, 2 = louder, clips) |
+| `--audio-shift N` | output level: 20-bit OS samples >> N (default 4 = DAC-faithful; the live window adds 2x gain and a soft limiter) |
 | `Ctrl+R` | power cycle |
 | `Esc` | quit |
 
 Speed: about 87 M emulated instructions/s on an i7-6700K, real time needs 66 M/s. Slower machines will run below real time (use no other heavy load).
+
+## Speed
+The emulator needs about 84 M emulated instructions per second for real time. `make -C emu pgo` builds a profile-guided binary (~10 % faster; trains on `firmware/` or `FIRMWARE=file`).
+If the host is too slow the sound plays slightly flat instead of breaking up. `STEPS_PER_FRAME=n` changes the CPU budget per audio frame (default 1900).
 
 ## Build only / tests
 ```bash

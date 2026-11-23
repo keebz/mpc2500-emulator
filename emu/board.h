@@ -12,10 +12,11 @@
 
 // ---- timing --------------------------------------------------------------------------------------------------------
 // One emulated instruction = 1/CPU_HZ second. Calibrated against the stock OS: its TMU clock gives 1 ms = 1662 TMU0 ticks,
-// and one audio frame (44.1 kHz) is 1500 instructions.
-#define CPU_HZ 66150000ull
-#define STEPS_PER_FRAME 1500u
-#define BATCH 16                       // instructions between peripheral/interrupt service points
+// and one audio frame (44.1 kHz) is steps_per_frame instructions (default 1900: the stock OS needs >1650 per frame or its audio interrupt is missed).
+extern uint32_t steps_per_frame;       // emulated instructions per 44.1 kHz audio frame (default 1900); the instruction rate is 44100 x this
+#define CPU_HZ (44100ull * steps_per_frame)
+#define STEPS_PER_FRAME steps_per_frame
+#define BATCH 64                       // instructions between peripheral/interrupt service points
 
 // ---- physical memory map -------------------------------------------------------------------------------------------
 #define FLASH_SIZE   0x00800000u       // 8 MiB (one AM29LV641DL)
@@ -91,6 +92,7 @@ uint32_t soc_read(uint32_t phys, int size);          // 0x04000000-0x04000FFF
 void soc_write(uint32_t phys, uint32_t val, int size);
 uint32_t p4_read(uint32_t addr, int size);           // 0xFFFFFE00-0xFFFFFFFF
 void p4_write(uint32_t addr, uint32_t val, int size);
+extern int soc_irq_blocked;            // set by soc_service while an interrupt waits for BL / a DSP loop: board_run then uses short batches
 void soc_service(void);                // timers, SIOF frames and interrupt delivery; called every BATCH instructions
 extern uint64_t soc_irq_count, siof_frames, dmac_done;
 extern unsigned siof_irq_div;
@@ -102,8 +104,9 @@ void spd_line_update(void);
 
 // ---- audio.c -------------------------------------------------------------------------------------------------------
 void audio_push(uint32_t siof_word);   // one 32-bit word written to the SIOF transmit FIFO
+uint32_t audio_live_total(void);       // frames produced since reset
 uint32_t audio_live_fill(void);        // frames waiting in the live ring
-extern int audio_shift;                // 20-bit -> 16-bit right shift (default 3)
+extern int audio_shift;                // 20-bit -> 16-bit right shift (default 4)
 void audio_capture(int on);
 int  audio_save_wav(const char *path);
 void audio_live_enable(int on);

@@ -19,10 +19,10 @@ static void emit(uint32_t w) {
     cap_buf[cap_n++] = (int32_t)w;
 }
 
-// Output scaling: the OS sample words are 20-bit; they are shifted right by audio_shift (default 3) to 16 bit. The level mapping to the real
+// Output scaling: the OS sample words are 20-bit; they are shifted right by audio_shift (default 4 = the full 20-bit range) to 16 bit. The level mapping to the real
 // DAC full scale is not known (a normalised kit sample at velocity 100 peaks at ~0.35 of 16-bit full scale at shift 4 and clips at shift 2); use a larger shift if
 // clipping is heard. --audio-shift N on the command line.
-int audio_shift = 3;
+int audio_shift = 4;
 static int clip16(int32_t v) { v >>= audio_shift; return v > 32767 ? 32767 : v < -32768 ? -32768 : v; }
 
 // Words come in pairs (hi7, lo13) = one 20-bit sample; two consecutive pairs make one stereo frame: left, then right. (With a centred
@@ -40,6 +40,7 @@ void audio_push(uint32_t w) {
 void audio_capture(int on) { cap_on = on; if (on) cap_n = 0; }
 void audio_live_enable(int on) { live_on = on; }
 
+uint32_t audio_live_total(void) { return __atomic_load_n(&ring_w, __ATOMIC_ACQUIRE); }
 uint32_t audio_live_fill(void) { return __atomic_load_n(&ring_w, __ATOMIC_ACQUIRE) - ring_r; }
 uint32_t audio_live_pop(uint32_t *word) {
     uint32_t w = __atomic_load_n(&ring_w, __ATOMIC_ACQUIRE);
