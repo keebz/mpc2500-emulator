@@ -102,6 +102,7 @@ void spd_line_update(void);
 
 // ---- audio.c -------------------------------------------------------------------------------------------------------
 void audio_push(uint32_t siof_word);   // one 32-bit word written to the SIOF transmit FIFO
+uint32_t audio_live_fill(void);        // frames waiting in the live ring
 extern int audio_shift;                // 20-bit -> 16-bit right shift (default 3)
 void audio_capture(int on);
 int  audio_save_wav(const char *path);

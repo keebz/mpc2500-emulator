@@ -40,6 +40,7 @@ void audio_push(uint32_t w) {
 void audio_capture(int on) { cap_on = on; if (on) cap_n = 0; }
 void audio_live_enable(int on) { live_on = on; }
 
+uint32_t audio_live_fill(void) { return __atomic_load_n(&ring_w, __ATOMIC_ACQUIRE) - ring_r; }
 uint32_t audio_live_pop(uint32_t *word) {
     uint32_t w = __atomic_load_n(&ring_w, __ATOMIC_ACQUIRE);
     if (ring_r == w) return 0;

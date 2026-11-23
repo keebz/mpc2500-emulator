@@ -98,14 +98,46 @@ static void thick_line(SDL_Renderer *ren, float x0, float y0, float x1, float y1
 static void fill_rect_a(SDL_Renderer *ren, SDL_Rect r, int inset, Uint8 R, Uint8 G, Uint8 B, Uint8 A) {
     r.x += inset; r.y += inset; r.w -= 2 * inset; r.h -= 2 * inset; SDL_SetRenderDrawColor(ren, R, G, B, A); SDL_RenderFillRect(ren, &r);
 }
-static volatile int au_peak, au_under;
+static volatile int au_peak, au_under, au_fill;
+// Audio output follows the emulator: the emulation thread fills a ring with 44.1 kHz stereo frames; the callback plays them with a small
+// rate adjustment (linear interpolation) that keeps the ring near its target fill. If the host is too slow to emulate in real time the sound
+// then plays slightly slow (pitch drops) instead of breaking up into clicks and buzzing.
 static void audio_cb(void *u, Uint8 *stream, int len) {
     (void)u; int16_t *o = (int16_t *)stream; int n = len / 4;
+    static uint32_t cur, nxt; static double pos; static int primed;
+    const double target = 2400.0;
+    double fill = (double)audio_live_fill(); au_fill = (int)fill;
+    double rate = 1.0 + 0.5 * (fill - target) / target; if (rate < 0.4) rate = 0.4; if (rate > 1.15) rate = 1.15;
+    if (!primed) { audio_live_pop(&cur); audio_live_pop(&nxt); primed = 1; }
     for (int i = 0; i < n; i++) {
-        uint32_t w;
-        if (audio_live_pop(&w)) { int pk = abs((int16_t)(w >> 16)); if (pk > au_peak) au_peak = pk; o[2 * i] = (int16_t)(w >> 16); o[2 * i + 1] = (int16_t)(w & 0xFFFF); }   // left = high half (SIOF: SITDL = bits 31:16)
-        else { o[2 * i] = o[2 * i + 1] = 0; au_under++; }
+        pos += rate;
+        while (pos >= 1.0) { pos -= 1.0; cur = nxt; if (!audio_live_pop(&nxt)) { au_under++; pos = 0; break; } }
+        double f = pos;
+        double l = (int16_t)(cur >> 16) * (1 - f) + (int16_t)(nxt >> 16) * f, r = (int16_t)(cur & 0xFFFF) * (1 - f) + (int16_t)(nxt & 0xFFFF) * f;
+        int pk = (int)fabs(l); if (pk > au_peak) au_peak = pk;
+        o[2 * i] = (int16_t)l; o[2 * i + 1] = (int16_t)r;
     }
+}
+
+// ---- emulation thread: runs the board against the wall clock while the UI thread draws and handles input ----
+static SDL_mutex *emu_lock; static volatile int emu_alive = 1, ui_waiting, ff_mode;
+static volatile uint64_t emu_t0_ticks, emu_base_cycles; static volatile int reset_requested;
+static int emu_thread(void *unused) {
+    (void)unused; const uint64_t freq = SDL_GetPerformanceFrequency();
+    while (emu_alive) {
+        SDL_LockMutex(emu_lock);
+        if (reset_requested) { board_reset(); emu_base_cycles = cpu.cycles; emu_t0_ticks = SDL_GetPerformanceCounter(); reset_requested = 0; printf("-- power cycle --\n"); fflush(stdout); }
+        uint64_t elapsed = SDL_GetPerformanceCounter() - emu_t0_ticks;
+        uint64_t target = (uint64_t)((double)elapsed / (double)freq * (double)CPU_HZ * (ff_mode ? 8 : 1));
+        uint64_t done = cpu.cycles - emu_base_cycles, budget = target > done ? target - done : 0;
+        if (budget > 300000) budget = 300000;
+        if (budget > 20000 || ff_mode) board_run(budget); else budget = 0;
+        if (target > done + 40000000) { emu_base_cycles = cpu.cycles - target + 8000000; }     // far behind (e.g. the window was dragged): drop the backlog
+        SDL_UnlockMutex(emu_lock);
+        if (ui_waiting) { while (ui_waiting && emu_alive) SDL_Delay(0); }
+        if (!budget) SDL_Delay(1);
+    }
+    return 0;
 }
 
 static int in_rect(const SDL_Rect *r, int x, int y) { return x >= r->x && x < r->x + r->w && y >= r->y && y < r->y + r->h; }
@@ -145,20 +177,22 @@ int ui_run(const char *skin_dir, const char *keymap) {
     if (getenv("LIVE_PADS")) { const char *q = getenv("LIVE_PADS"); int n, k; while (sscanf(q, "%d%n", &n, &k) == 1) { pad_down(n, 100); q += k; if (*q == ',') q++; } }
     if (getenv("LIVE_HOVER")) sscanf(getenv("LIVE_HOVER"), "%d,%d", &hover_c, &hover_r);
 
-    uint32_t pix[LCD_W * LCD_H]; uint64_t frames = 0; uint32_t t0 = SDL_GetTicks(); uint64_t emu0 = cpu.cycles;
-    const uint64_t STEPS_PER_MS = CPU_HZ / 1000;
+    uint32_t pix[LCD_W * LCD_H]; uint64_t frames = 0;
+    emu_lock = SDL_CreateMutex(); emu_t0_ticks = SDL_GetPerformanceCounter(); emu_base_cycles = cpu.cycles;
+    SDL_Thread *emu_th = SDL_CreateThread(emu_thread, "emulation", 0);
     int inj_f = -1, inj_n = 0; if (getenv("LIVE_WHEEL")) sscanf(getenv("LIVE_WHEEL"), "%d,%d", &inj_f, &inj_n);   // test hook: inject a mouse-wheel event at a frame
     while (running) {
         SDL_Event e;
         if (inj_f >= 0 && (int)frames == inj_f) { SDL_Event w; memset(&w, 0, sizeof w); w.type = SDL_MOUSEWHEEL; w.wheel.y = inj_n; SDL_PushEvent(&w); inj_f = -1; }
+        ui_waiting = 1; SDL_LockMutex(emu_lock); ui_waiting = 0;
         while (SDL_PollEvent(&e)) {
             if (e.type == SDL_QUIT) running = 0;
             else if (e.type == SDL_KEYDOWN || e.type == SDL_KEYUP) {
                 int dn = e.type == SDL_KEYDOWN; if (e.key.repeat) continue;
                 SDL_Keycode ks = e.key.keysym.sym; int ctrl = (e.key.keysym.mod & KMOD_CTRL) != 0;
                 if (dn && ks == SDLK_ESCAPE) running = 0;
-                else if (dn && ctrl && ks == SDLK_r) { board_reset(); emu0 = cpu.cycles; t0 = SDL_GetTicks(); printf("-- power cycle --\n"); fflush(stdout); }
-                else if (ks == SDLK_TAB) ff = dn;
+                else if (dn && ctrl && ks == SDLK_r) reset_requested = 1;
+                else if (ks == SDLK_TAB) { ff = dn; ff_mode = dn; emu_t0_ticks = SDL_GetPerformanceCounter(); emu_base_cycles = cpu.cycles; }
                 else if (dn && ks == SDLK_RIGHTBRACKET) wheel_turn(1);
                 else if (dn && ks == SDLK_LEFTBRACKET) wheel_turn(-1);
                 else {
@@ -198,12 +232,10 @@ int ui_run(const char *skin_dir, const char *keymap) {
                   if (e.type == SDL_MOUSEBUTTONUP) knob_drag = -1; }
             }
         }
-        // emulate one frame's worth of CPU time (more when fast-forwarding), never more than 8M instructions per frame
-        uint64_t target = (uint64_t)(SDL_GetTicks() - t0) * STEPS_PER_MS * (ff ? 8 : 1);
-        uint64_t budget = target > cpu.cycles - emu0 ? target - (cpu.cycles - emu0) : 0; if (budget > 8000000) budget = 8000000;
-        board_run(budget);
+        // (the emulation thread advances the board; here only the LCD image is taken, under the lock)
         { uint8_t fb[LCD_BYTES]; lcd_render(fb);   // T6963C frame: bit 7 = leftmost pixel, 1 = dark; lime-green backlit LCD colours
           for (int y = 0; y < LCD_H; y++) for (int bx = 0; bx < LCD_W / 8; bx++) { uint8_t b = fb[y * (LCD_W / 8) + bx]; for (int k = 0; k < 8; k++) pix[y * LCD_W + bx * 8 + k] = ((b >> (7 - k)) & 1) ? 0x18260C : 0xAAC844; } }
+        SDL_UnlockMutex(emu_lock);
         SDL_UpdateTexture(lcd_tex, 0, pix, LCD_W * 4);
 
         SDL_SetRenderDrawColor(ren, 14, 14, 16, 255); SDL_RenderClear(ren);
@@ -255,7 +287,8 @@ int ui_run(const char *skin_dir, const char *keymap) {
             SDL_RenderReadPixels(ren, 0, SDL_PIXELFORMAT_ARGB8888, sf->pixels, sf->pitch); SDL_SaveBMP(sf, "live_shot.bmp"); SDL_FreeSurface(sf); running = 0;
         }
         SDL_RenderPresent(ren);
-        if (getenv("AUDIO_DEBUG") && frames % 60 == 0) { fprintf(stderr, "audio: peak %d underruns %d\n", au_peak, au_under); au_peak = au_under = 0; }
+        if (headless) SDL_Delay(16);                       // no vsync on the dummy driver: keep ~60 frames/s
+        if (getenv("AUDIO_DEBUG") && frames % 60 == 0) { fprintf(stderr, "audio: peak %d underruns %d fill %d\n", au_peak, au_under, au_fill); au_peak = au_under = 0; }
         if (++frames % 15 == 0) {
             char t[200]; const char *lab = hover_c >= 0 ? cell_label[hover_c][hover_r] : "";
             if (board_halted()) snprintf(t, sizeof t, "MPC2500 emulator   HALTED (see console)   Ctrl+R = power cycle");
@@ -263,6 +296,7 @@ int ui_run(const char *skin_dir, const char *keymap) {
             SDL_SetWindowTitle(win, t);
         }
     }
+    emu_alive = 0; SDL_WaitThread(emu_th, 0);
     SDL_Quit();
     return 0;
 }
