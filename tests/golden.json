@@ -1,0 +1,121 @@
+{
+ "clear_boot": {
+  "main_a.bin": "d9a2c8bf47a418f3"
+ },
+ "jv263_boot": {
+  "main_a.bin": "d7d61a6dda1d4a19"
+ },
+ "jv313_boot": {
+  "main_a.bin": "241b4cb46cd1354c"
+ },
+ "kit_audio": {
+  "p14_a.bin": "49b1540dc63ad182",
+  "p14_a.wav": "f1cc93dfdcf41f71",
+  "p16_a.bin": "11c53ddd25340f94",
+  "p16_a.wav": "e45d9cd64f4b2d8e",
+  "p1_a.bin": "fb1a330f06576bb6",
+  "p1_a.wav": "01cf3e1cec3fee0d",
+  "p5_a.bin": "92500e30ef506dfe",
+  "p5_a.wav": "32d1edbf4f6271d0",
+  "p9_a.bin": "ce90acab877a4497",
+  "p9_a.wav": "6920054dab7ce99e"
+ },
+ "light100_boot": {
+  "main_a.bin": "dd41a7e1cf489787"
+ },
+ "stock_boot": {
+  "main_a.bin": "d9a2c8bf47a418f3"
+ },
+ "stock_keys": {
+  "k0_0_a.bin": "a1fc322f0788fa7e",
+  "k0_10_a.bin": "d9a2c8bf47a418f3",
+  "k0_1_a.bin": "d9a2c8bf47a418f3",
+  "k0_2_a.bin": "d9a2c8bf47a418f3",
+  "k0_3_a.bin": "d9a2c8bf47a418f3",
+  "k0_4_a.bin": "d9a2c8bf47a418f3",
+  "k0_5_a.bin": "b61c4488eb496655",
+  "k0_6_a.bin": "b4e5461e4bc49544",
+  "k0_7_a.bin": "5f3437c03447c7e8",
+  "k0_8_a.bin": "936c535adb5ffd71",
+  "k0_9_a.bin": "d9a2c8bf47a418f3",
+  "k1_0_a.bin": "a1fc322f0788fa7e",
+  "k1_10_a.bin": "d9a2c8bf47a418f3",
+  "k1_1_a.bin": "d9a2c8bf47a418f3",
+  "k1_2_a.bin": "f0d539b616f878e9",
+  "k1_3_a.bin": "d9a2c8bf47a418f3",
+  "k1_4_a.bin": "93f24928e5eb7143",
+  "k1_5_a.bin": "6e56f7e448e5278f",
+  "k1_6_a.bin": "c2a72228cecc4e8b",
+  "k1_7_a.bin": "4ef6e65acdaa05b9",
+  "k1_8_a.bin": "617d3301dc5e168b",
+  "k1_9_a.bin": "87340271806684f3",
+  "k2_0_a.bin": "d9a2c8bf47a418f3",
+  "k2_10_a.bin": "f421344ff3e5bcc1",
+  "k2_1_a.bin": "c1f4694b46815c80",
+  "k2_2_a.bin": "d9a2c8bf47a418f3",
+  "k2_3_a.bin": "d9a2c8bf47a418f3",
+  "k2_4_a.bin": "d9a2c8bf47a418f3",
+  "k2_5_a.bin": "3901e64c035204f7",
+  "k2_6_a.bin": "daa36810278e42b4",
+  "k2_7_a.bin": "f114ad2e5f2025f3",
+  "k2_8_a.bin": "c05fc6bf27a4ca27",
+  "k2_9_a.bin": "398026a9b147f5b3",
+  "k3_0_a.bin": "d9a2c8bf47a418f3",
+  "k3_10_a.bin": "d9a2c8bf47a418f3",
+  "k3_1_a.bin": "d9a2c8bf47a418f3",
+  "k3_2_a.bin": "37aca99cca0f46b2",
+  "k3_3_a.bin": "7f40674f5df7711f",
+  "k3_4_a.bin": "d9a2c8bf47a418f3",
+  "k3_5_a.bin": "d9a2c8bf47a418f3",
+  "k3_6_a.bin": "d9a2c8bf47a418f3",
+  "k3_7_a.bin": "d9a2c8bf47a418f3",
+  "k3_8_a.bin": "d9a2c8bf47a418f3",
+  "k3_9_a.bin": "9795b82fcd04d8f4",
+  "k4_0_a.bin": "d9a2c8bf47a418f3",
+  "k4_10_a.bin": "d9a2c8bf47a418f3",
+  "k4_1_a.bin": "d9a2c8bf47a418f3",
+  "k4_2_a.bin": "d9a2c8bf47a418f3",
+  "k4_3_a.bin": "19b4858a6a61d1bc",
+  "k4_4_a.bin": "72e1784ec48ec406",
+  "k4_5_a.bin": "d9a2c8bf47a418f3",
+  "k4_6_a.bin": "2e977cc6981a5cf4",
+  "k4_7_a.bin": "d9a2c8bf47a418f3",
+  "k4_8_a.bin": "240efb73aae94db5",
+  "k4_9_a.bin": "d9a2c8bf47a418f3"
+ },
+ "stock_mode_pages": {
+  "p10_a.bin": "bcc3265888f33c24",
+  "p11_a.bin": "d9a2c8bf47a418f3",
+  "p12_a.bin": "b4acb06888c4cfe6",
+  "p13_a.bin": "5a731315eef9da4a",
+  "p14_a.bin": "472c55e86d2854ed",
+  "p15_a.bin": "147c1a41093781a6",
+  "p16_a.bin": "80644c3ac904c24b",
+  "p1_a.bin": "c8c49c54cbd7538e",
+  "p2_a.bin": "4120486c9b41cd85",
+  "p3_a.bin": "e321d306aa071b7e",
+  "p4_a.bin": "d9a2c8bf47a418f3",
+  "p5_a.bin": "4e5eb69d30cdf0fb",
+  "p6_a.bin": "b8393c3c57b93fc0",
+  "p7_a.bin": "9caf96929a59fdce",
+  "p8_a.bin": "2ef2bb841a0674cb",
+  "p9_a.bin": "9a5d1ffd8481c5a0"
+ },
+ "stock_wheel": {
+  "w-1_a.bin": "37aca99cca0f46b2",
+  "w1_a.bin": "37aca99cca0f46b2"
+ },
+ "wheel_parity": {
+  "b1_a.bin": "72e1784ec48ec406",
+  "b3_a.bin": "7117f25f04aff799",
+  "b3x_a.bin": "7117f25f04aff799",
+  "b9_a.bin": "53aa2aa344ffc52c",
+  "w1_a.bin": "72e1784ec48ec406",
+  "w3_a.bin": "7117f25f04aff799",
+  "w5d2_a.bin": "7117f25f04aff799",
+  "w9_a.bin": "53aa2aa344ffc52c"
+ },
+ "xl390_boot": {
+  "main_a.bin": "a0ed8cbd6adb2299"
+ }
+}

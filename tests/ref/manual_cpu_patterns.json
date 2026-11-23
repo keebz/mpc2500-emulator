@@ -1,0 +1,1358 @@
+[
+[
+6875,
+"ADD",
+"0011nnnnmmmm1100",
+"ADD        Rm,Rn        Rm + Rn \u2192 Rn"
+],
+[
+6876,
+"ADD",
+"0111nnnniiiiiiii",
+"ADD        #imm,Rn      Rn + imm \u2192 Rn"
+],
+[
+6918,
+"ADDC",
+"0011nnnnmmmm1110",
+"ADDC     Rm,Rn         Rn + Rm + T \u2192 Rn, carry \u2192 T"
+],
+[
+6959,
+"ADDV",
+"0011nnnnmmmm1111",
+"ADDV        Rm,Rn    Rn + Rm \u2192 Rn, overflow \u2192 T"
+],
+[
+7005,
+"AND",
+"0010nnnnmmmm1001",
+"AND      Rm,Rn               Rn & Rm \u2192 Rn"
+],
+[
+7006,
+"AND",
+"11001001iiiiiiii",
+"AND      #imm,R0             R0 & imm \u2192 R0"
+],
+[
+7007,
+"AND.B",
+"11001101iiiiiiii",
+"AND.B #imm,@(R0,GBR)         (R0 + GBR) & imm \u2192"
+],
+[
+7069,
+"BF",
+"10001011dddddddd",
+"BF      label        When T = 0, disp \u00d7 2 + PC \u2192 PC;"
+],
+[
+7118,
+"BF",
+"10001111dddddddd",
+"BF      label When T = 0, disp \u00d7 2 + PC \u2192 PC;"
+],
+[
+7197,
+"BRA",
+"1010dddddddddddd",
+"BRA      label         disp \u00d7 2 + PC \u2192 PC"
+],
+[
+7264,
+"BRAF",
+"0000nnnn00100011",
+"BRAF      Rm           Rm + PC \u2192 PC"
+],
+[
+7326,
+"BSR",
+"1011dddddddddddd",
+"BSR      label        PC \u2192 PR, disp \u00d7 2 + PC \u2192 PC"
+],
+[
+7406,
+"BSRF",
+"0000nnnn00000011",
+"BSRF      Rm           PC \u2192 PR, Rm + PC \u2192 PC"
+],
+[
+7477,
+"BT",
+"10001001dddddddd",
+"BT        label       When T = 1, disp \u00d7 2 + PC \u2192 PC;"
+],
+[
+7523,
+"BT/S",
+"10001101dddddddd",
+"BT/S     label       When T = 1, disp \u00d7 2 + PC \u2192 PC;"
+],
+[
+7600,
+"CLRMAC",
+"0000000000101000",
+"CLRMAC                 0 \u2192 MACH, MACL"
+],
+[
+7631,
+"CLRS",
+"0000000001001000",
+"CLRS                    0\u2192S"
+],
+[
+7660,
+"CLRT",
+"0000000000001000",
+"CLRT                     0\u2192T"
+],
+[
+7689,
+"CMP/EQ",
+"0011nnnnmmmm0000",
+"CMP/EQ     Rm,Rn         When Rn = Rm, 1 \u2192 T"
+],
+[
+7691,
+"CMP/GE",
+"0011nnnnmmmm0011",
+"CMP/GE     Rm,Rn         When signed and Rn \u2265"
+],
+[
+7693,
+"CMP/GT",
+"0011nnnnmmmm0111",
+"CMP/GT     Rm,Rn         When signed and Rn >"
+],
+[
+7695,
+"CMP/HI",
+"0011nnnnmmmm0110",
+"CMP/HI     Rm,Rn         When unsigned and Rn >"
+],
+[
+7697,
+"CMP/HS",
+"0011nnnnmmmm0010",
+"CMP/HS     Rm,Rn         When unsigned and Rn \u2265"
+],
+[
+7699,
+"CMP/PL",
+"0100nnnn00010101",
+"CMP/PL     Rn            When Rn > 0, 1 \u2192 T"
+],
+[
+7701,
+"CMP/PZ",
+"0100nnnn00010001",
+"CMP/PZ     Rn            When Rn \u2265 0, 1 \u2192 T"
+],
+[
+7703,
+"CMP/STR",
+"0010nnnnmmmm1100",
+"CMP/STR Rm,Rn            When a byte in Rn equals"
+],
+[
+7705,
+"CMP/EQ",
+"10001000iiiiiiii",
+"CMP/EQ     #imm,R0       When R0 = imm, 1 \u2192 T"
+],
+[
+7846,
+"DIV0S",
+"0010nnnnmmmm0111",
+"DIV0S     Rm,Rn MSB of Rn \u2192 Q,"
+],
+[
+7879,
+"DIV0U",
+"0000000000011001",
+"DIV0U                  0 \u2192 M/Q/T"
+],
+[
+7907,
+"DIV1",
+"0011nnnnmmmm0100",
+"DIV1     Rm,Rn        1 step division (Rn \u00f7 Rm)"
+],
+[
+8097,
+"DMULS.L",
+"0011nnnnmmmm1101",
+"DMULS.L      Rm,Rn    With sign, Rn \u00d7 Rm \u2192 MACH,"
+],
+[
+8187,
+"DMULU.L",
+"0011nnnnmmmm0101",
+"DMULU.L      Rm,Rn    Without sign, Rn \u00d7 Rm \u2192"
+],
+[
+8258,
+"DT",
+"0100nnnn00010000",
+"DT        Rn         Rn - 1 \u2192 Rn;"
+],
+[
+8295,
+"EXTS.B",
+"0110nnnnmmmm1110",
+"EXTS.B      Rm,Rn      Sign-extend Rm from byte \u2192 Rn"
+],
+[
+8296,
+"EXTS.W",
+"0110nnnnmmmm1111",
+"EXTS.W      Rm,Rn      Sign-extend Rm from word \u2192 Rn"
+],
+[
+8339,
+"EXTU.B",
+"0110nnnnmmmm1100",
+"EXTU.B      Rm,Rn     Zero-extend Rm from byte \u2192 Rn"
+],
+[
+8340,
+"EXTU.W",
+"0110nnnnmmmm1101",
+"EXTU.W      Rm,Rn     Zero-extend Rm from word \u2192 Rn"
+],
+[
+8383,
+"JMP",
+"0100nnnn00101011",
+"JMP       @Rm             Rm \u2192 PC"
+],
+[
+8444,
+"JSR",
+"0100nnnn00001011",
+"JSR       @Rm          PC \u2192 Rm, Rm \u2192 PC"
+],
+[
+8515,
+"LDC",
+"0100mmmm00001110",
+"LDC      Rm,SR          Rm \u2192 SR"
+],
+[
+8516,
+"LDC",
+"0100mmmm00011110",
+"LDC      Rm,GBR         Rm \u2192 GBR"
+],
+[
+8517,
+"LDC",
+"0100mmmm00101110",
+"LDC      Rm,VBR         Rm \u2192 VBR"
+],
+[
+8518,
+"LDC",
+"0100mmmm00111110",
+"LDC      Rm,SSR         Rm \u2192 SSR"
+],
+[
+8519,
+"LDC",
+"0100mmmm01001110",
+"LDC      Rm,SPC         Rm \u2192 SPC"
+],
+[
+8520,
+"LDC",
+"0100mmmm01011110",
+"LDC      Rm,MOD*        Rm \u2192 MOD"
+],
+[
+8521,
+"LDC",
+"0100mmmm01111110",
+"LDC      Rm,RE*         Rm \u2192 RE"
+],
+[
+8522,
+"LDC",
+"0100mmmm01101110",
+"LDC      Rm,RS*         Rm \u2192 RS"
+],
+[
+8523,
+"LDC",
+"0100mmmm10001110",
+"LDC      Rm,R0_BANK     Rm \u2192 R0_BANK"
+],
+[
+8524,
+"LDC",
+"0100mmmm10011110",
+"LDC      Rm,R1_BANK     Rm \u2192 R1_BANK"
+],
+[
+8525,
+"LDC",
+"0100mmmm10101110",
+"LDC      Rm,R2_BANK     Rm \u2192 R2_BANK"
+],
+[
+8526,
+"LDC",
+"0100mmmm10111110",
+"LDC      Rm,R3_BANK     Rm \u2192 R3_BANK"
+],
+[
+8527,
+"LDC",
+"0100mmmm11001110",
+"LDC      Rm,R4_BANK     Rm \u2192 R4_BANK"
+],
+[
+8528,
+"LDC",
+"0100mmmm11011110",
+"LDC      Rm,R5_BANK     Rm \u2192 R5_BANK"
+],
+[
+8529,
+"LDC",
+"0100mmmm11101110",
+"LDC      Rm,R6_BANK     Rm \u2192 R6_BANK"
+],
+[
+8530,
+"LDC",
+"0100mmmm11111110",
+"LDC      Rm,R7_BANK     Rm \u2192 R7_BANK"
+],
+[
+8531,
+"LDC.L",
+"0100mmmm00000111",
+"LDC.L    @Rm+,SR        (Rm) \u2192 SR, Rm + 4 \u2192 Rm"
+],
+[
+8532,
+"LDC.L",
+"0100mmmm00010111",
+"LDC.L    @Rm+,GBR       (Rm) \u2192 GBR, Rm + 4 \u2192 Rm"
+],
+[
+8533,
+"LDC.L",
+"0100mmmm00100111",
+"LDC.L    @Rm+,VBR       (Rm) \u2192 VBR, Rm + 4 \u2192 Rm"
+],
+[
+8534,
+"LDC.L",
+"0100mmmm00110111",
+"LDC.L    @Rm+,SSR       (Rm) \u2192 SSR, Rm + 4 \u2192 Rm"
+],
+[
+8535,
+"LDC.L",
+"0100mmmm01000111",
+"LDC.L    @Rm+,SPC       (Rm) \u2192 SPC, Rm + 4 \u2192 Rm"
+],
+[
+8536,
+"LDC.L",
+"0100mmmm01010111",
+"LDC.L    @Rm+,MOD*      (Rm) \u2192 MOD, Rm + 4 \u2192 Rm"
+],
+[
+8537,
+"LDC.L",
+"0100mmmm01110111",
+"LDC.L    @Rm+,RE*       (Rm) \u2192 RE, Rm + 4 \u2192 Rm"
+],
+[
+8538,
+"LDC.L",
+"0100mmmm01100111",
+"LDC.L    @Rm+,RS*       (Rm) \u2192 RS, Rm + 4 \u2192 Rm"
+],
+[
+8539,
+"LDC.L",
+"0100mmmm10000111",
+"LDC.L    @Rm+,R0_BANK (Rm) \u2192 R0_BANK,"
+],
+[
+8541,
+"LDC.L",
+"0100mmmm10010111",
+"LDC.L    @Rm+,R1_BANK (Rm) \u2192 R1_BANK,"
+],
+[
+8543,
+"LDC.L",
+"0100mmmm10100111",
+"LDC.L    @Rm+,R2_BANK (Rm) \u2192 R2_BANK,"
+],
+[
+8545,
+"LDC.L",
+"0100mmmm10110111",
+"LDC.L    @Rm+,R3_BANK (Rm) \u2192 R3_BANK,"
+],
+[
+8554,
+"LDC.L",
+"0100mmmm11000111",
+"LDC.L    @Rm+,R4_BANK (Rm) \u2192 R4_BANK,"
+],
+[
+8556,
+"LDC.L",
+"0100mmmm11010111",
+"LDC.L    @Rm+,R5_BANK (Rm) \u2192 R5_BANK,"
+],
+[
+8558,
+"LDC.L",
+"0100mmmm11100111",
+"LDC.L    @Rm+,R6_BANK (Rm) \u2192 R6_BANK,"
+],
+[
+8560,
+"LDC.L",
+"0100mmmm11110111",
+"LDC.L    @Rm+,R7_BANK (Rm) \u2192 R7_BANK,"
+],
+[
+8747,
+"LDRE",
+"10001110dddddddd",
+"LDRE @(disp,PC)         disp \u00d7 2 + PC \u2192 RE"
+],
+[
+8805,
+"LDRS",
+"10001100dddddddd",
+"LDRS @(disp,PC)         disp \u00d7 2 + PC \u2192 RS"
+],
+[
+8863,
+"LDS",
+"0100mmmm00001010",
+"LDS       Rm,MACH       Rm \u2192 MACH"
+],
+[
+8864,
+"LDS",
+"0100mmmm00011010",
+"LDS       Rm,MACL       Rm \u2192 MACL"
+],
+[
+8865,
+"LDS",
+"0100mmmm00101010",
+"LDS       Rm,PR         Rm \u2192 PR"
+],
+[
+8866,
+"LDS",
+"0100mmmm01101010",
+"LDS       Rm,DSR*       Rm \u2192 DSR"
+],
+[
+8867,
+"LDS",
+"0100mmmm01111010",
+"LDS       Rm,A0*        Rm \u2192 A0"
+],
+[
+8868,
+"LDS",
+"0100mmmm10001010",
+"LDS       Rm,X0*        Rm \u2192 X0"
+],
+[
+8869,
+"LDS",
+"0100mmmm10011010",
+"LDS       Rm,X1*        Rm \u2192 X1"
+],
+[
+8870,
+"LDS",
+"0100mmmm10101010",
+"LDS       Rm,Y0*        Rm \u2192 Y0"
+],
+[
+8871,
+"LDS",
+"0100mmmm10111010",
+"LDS       Rm,Y1*        Rm \u2192 Y1"
+],
+[
+8872,
+"LDS.L",
+"0100mmmm00000110",
+"LDS.L     @Rm+,MACH     (Rm) \u2192 MACH, Rm + 4 \u2192 Rm"
+],
+[
+8873,
+"LDS.L",
+"0100mmmm00010110",
+"LDS.L     @Rm+,MACL     (Rm) \u2192 MACL, Rm + 4 \u2192 Rm"
+],
+[
+8874,
+"LDS.L",
+"0100mmmm00100110",
+"LDS.L     @Rm+,PR       (Rm) \u2192 PR, Rm + 4 \u2192 Rm"
+],
+[
+8875,
+"LDS.L",
+"0100mmmm01100110",
+"LDS.L     @Rm+,DSR*     (Rm) \u2192 DSR, Rm + 4 \u2192 Rm"
+],
+[
+8876,
+"LDS.L",
+"0100mmmm01110110",
+"LDS.L     @Rm+,A0*      (Rm) \u2192 A0, Rm + 4 \u2192 Rm"
+],
+[
+8877,
+"LDS.L",
+"0100nnnn10000110",
+"LDS.L     @Rm+,X0*      (Rm) \u2192 X0, Rm + 4 \u2192 Rm"
+],
+[
+8878,
+"LDS.L",
+"0100nnnn10010110",
+"LDS.L     @Rm+,X1*      (Rm) \u2192 X1, Rm + 4 \u2192 Rm"
+],
+[
+8879,
+"LDS.L",
+"0100nnnn10100110",
+"LDS.L     @Rm+,Y0*      (Rm) \u2192 Y0, Rm + 4 \u2192 Rm"
+],
+[
+8880,
+"LDS.L",
+"0100nnnn10110110",
+"LDS.L     @Rm+,Y1*      (Rm) \u2192 Y1, Rm + 4 \u2192 Rm"
+],
+[
+9054,
+"LDTLB",
+"0000000000111000",
+"LDTLB                  PTEH/PTEL \u2192 TLB"
+],
+[
+9097,
+"MAC.L",
+"0000nnnnmmmm1111",
+"MAC.L     @Rm+,@Rn+      Signed operation, (Rn) \u00d7 (Rm) +"
+],
+[
+9236,
+"MAC.W",
+"0100nnnnmmmm1111",
+"MAC.W     @Rm+,@Rn+ With sign, (Rn) \u00d7 (Rm) + MAC \u2192"
+],
+[
+9342,
+"MOV",
+"0110nnnnmmmm0011",
+"MOV      Rm,Rn           Rm \u2192 Rn"
+],
+[
+9343,
+"MOV.B",
+"0010nnnnmmmm0000",
+"MOV.B    Rm,@Rn          Rm \u2192 (Rn)"
+],
+[
+9344,
+"MOV.W",
+"0010nnnnmmmm0001",
+"MOV.W    Rm,@Rn          Rm \u2192 (Rn)"
+],
+[
+9345,
+"MOV.L",
+"0010nnnnmmmm0010",
+"MOV.L    Rm,@Rn          Rm \u2192 (Rn)"
+],
+[
+9346,
+"MOV.B",
+"0110nnnnmmmm0000",
+"MOV.B    @Rm,Rn          (Rm) \u2192 sign extension \u2192 Rn"
+],
+[
+9347,
+"MOV.W",
+"0110nnnnmmmm0001",
+"MOV.W    @Rm,Rn          (Rm) \u2192 sign extension \u2192 Rn"
+],
+[
+9348,
+"MOV.L",
+"0110nnnnmmmm0010",
+"MOV.L    @Rm,Rn          (Rm) \u2192 Rn"
+],
+[
+9349,
+"MOV.B",
+"0010nnnnmmmm0100",
+"MOV.B    Rm,@\u2013Rn         Rn \u2013 1 \u2192 Rn, Rm \u2192 (Rn)"
+],
+[
+9350,
+"MOV.W",
+"0010nnnnmmmm0101",
+"MOV.W    Rm,@\u2013Rn         Rn \u2013 2 \u2192 Rn, Rm \u2192 (Rn)"
+],
+[
+9351,
+"MOV.L",
+"0010nnnnmmmm0110",
+"MOV.L    Rm,@\u2013Rn         Rn \u2013 4 \u2192 Rn, Rm \u2192 (Rn)"
+],
+[
+9352,
+"MOV.B",
+"0110nnnnmmmm0100",
+"MOV.B    @Rm+,Rn         (Rm) \u2192 sign extension \u2192 Rn,"
+],
+[
+9354,
+"MOV.W",
+"0110nnnnmmmm0101",
+"MOV.W    @Rm+,Rn         (Rm) \u2192 sign extension \u2192 Rn,"
+],
+[
+9356,
+"MOV.L",
+"0110nnnnmmmm0110",
+"MOV.L    @Rm+,Rn         (Rm) \u2192 Rn, Rm + 4 \u2192 Rm"
+],
+[
+9357,
+"MOV.B",
+"0000nnnnmmmm0100",
+"MOV.B    Rm,@(R0,Rn)     Rm \u2192 (R0 + Rn)"
+],
+[
+9358,
+"MOV.W",
+"0000nnnnmmmm0101",
+"MOV.W    Rm,@(R0,Rn)     Rm \u2192 (R0 + Rn)"
+],
+[
+9359,
+"MOV.L",
+"0000nnnnmmmm0110",
+"MOV.L    Rm,@(R0,Rn)     Rm \u2192 (R0 + Rn)"
+],
+[
+9360,
+"MOV.B",
+"0000nnnnmmmm1100",
+"MOV.B    @(R0,Rm),Rn     (R0 + Rm) \u2192 sign extension \u2192"
+],
+[
+9362,
+"MOV.W",
+"0000nnnnmmmm1101",
+"MOV.W    @(R0,Rm),Rn     (R0 + Rm) \u2192 sign extension \u2192"
+],
+[
+9364,
+"MOV.L",
+"0000nnnnmmmm1110",
+"MOV.L    @(R0,Rm),Rn     (R0 + Rm) \u2192 Rn"
+],
+[
+9555,
+"MOV",
+"1110nnnniiiiiiii",
+"MOV      #imm,Rn                imm \u2192 sign"
+],
+[
+9557,
+"MOV.W",
+"1001nnnndddddddd",
+"MOV.W    @(disp,PC),Rn          (disp \u00d7 2 + PC) \u2192 sign"
+],
+[
+9559,
+"MOV.L",
+"1101nnnndddddddd",
+"MOV.L    @(disp,PC),Rn          (disp \u00d7 4 + PC) \u2192 Rn"
+],
+[
+9655,
+"MOV.B",
+"11000100dddddddd",
+"MOV.B    @(disp,GBR),R0         (disp + GBR) \u2192 sign"
+],
+[
+9657,
+"MOV.W",
+"11000101dddddddd",
+"MOV.W    @(disp,GBR),R0         (disp \u00d7 2 + GBR) \u2192 sign"
+],
+[
+9659,
+"MOV.L",
+"11000110dddddddd",
+"MOV.L    @(disp,GBR),R0         (disp \u00d7 4 + GBR) \u2192 R0"
+],
+[
+9660,
+"MOV.B",
+"11000000dddddddd",
+"MOV.B    R0,@(disp,GBR)         R0 \u2192 (disp + GBR)"
+],
+[
+9661,
+"MOV.W",
+"11000001dddddddd",
+"MOV.W    R0,@(disp,GBR)         R0 \u2192 (disp \u00d7 2 + GBR)"
+],
+[
+9662,
+"MOV.L",
+"11000010dddddddd",
+"MOV.L    R0,@(disp,GBR)         R0 \u2192 (disp \u00d7 4 + GBR)"
+],
+[
+9787,
+"MOV.B",
+"10000000nnnndddd",
+"MOV.B    R0,@(disp,Rn)         R0 \u2192 (disp + Rn)"
+],
+[
+9788,
+"MOV.W",
+"10000001nnnndddd",
+"MOV.W    R0,@(disp,Rn)         R0 \u2192 (disp \u00d7 2 + Rn)"
+],
+[
+9789,
+"MOV.L",
+"0001nnnnmmmmdddd",
+"MOV.L    Rm,@(disp,Rn)         Rm \u2192 (disp \u00d7 4 + Rn)"
+],
+[
+9790,
+"MOV.B",
+"10000100mmmmdddd",
+"MOV.B    @(disp,Rm),R0         (disp + Rm) \u2192 sign"
+],
+[
+9792,
+"MOV.W",
+"10000101mmmmdddd",
+"MOV.W    @(disp,Rm),R0         (disp \u00d7 2 + Rm) \u2192 sign"
+],
+[
+9794,
+"MOV.L",
+"0101nnnnmmmmdddd",
+"MOV.L    @(disp,Rm),Rn         (disp \u00d7 4 + Rm) \u2192 Rn"
+],
+[
+9918,
+"MOVA",
+"11000111dddddddd",
+"MOVA     @(disp,PC),R0        disp \u00d7 4 + PC \u2192 R0"
+],
+[
+9965,
+"MOVT",
+"0000nnnn00101001",
+"MOVT      Rn          T \u2192 Rn"
+],
+[
+9998,
+"MUL.L",
+"0000nnnnmmmm0111",
+"MUL.L     Rm,Rn       Rn \u00d7 Rm \u2192 MACL"
+],
+[
+10030,
+"MULS.W",
+"0010nnnnmmmm1111",
+"MULS.W      Rm,Rn   Signed operation, Rn \u00d7 Rm \u2192 MACL"
+],
+[
+10063,
+"MULU.W",
+"0010nnnnmmmm1110",
+"MULU.W     Rm,Rn      Unsigned, Rn \u00d7 Rm \u2192 MACL"
+],
+[
+10097,
+"NEG",
+"0110nnnnmmmm1011",
+"NEG       Rm,Rn       0 \u2013 Rm \u2192 Rn"
+],
+[
+10127,
+"NEGC",
+"0110nnnnmmmm1010",
+"NEGC      Rm,Rn        0 \u2013 Rm \u2013 T \u2192 Rn, Borrow \u2192 T"
+],
+[
+10168,
+"NOP",
+"0000000000001001",
+"NOP                      No operation"
+],
+[
+10195,
+"NOT",
+"0110nnnnmmmm0111",
+"NOT Rm,Rn              Rm \u2192 Rn"
+],
+[
+10225,
+"OR",
+"0010nnnnmmmm1011",
+"OR       Rm,Rn              Rn | Rm \u2192 Rn"
+],
+[
+10226,
+"OR",
+"11001011iiiiiiii",
+"OR       #imm,R0            R0 | imm \u2192 R0"
+],
+[
+10227,
+"OR.B",
+"11001111iiiiiiii",
+"OR.B #imm,@(R0,GBR)         (R0 + GBR) | imm \u2192 (R0 +"
+],
+[
+10290,
+"PREF",
+"0000nnnn10000011",
+"PREF @Rn                  (Rn &0xfffffff0) \u2192 Cache"
+],
+[
+10334,
+"ROTCL",
+"0100nnnn00100100",
+"ROTCL     Rn           T \u2190 Rn \u2190 T"
+],
+[
+10381,
+"ROTCR",
+"0100nnnn00100101",
+"ROTCR     Rn           T \u2192 Rn \u2192 T"
+],
+[
+10427,
+"ROTL",
+"0100nnnn00000100",
+"ROTL      Rn           T \u2190 Rn \u2190 MSB"
+],
+[
+10468,
+"ROTR",
+"0100nnnn00000101",
+"ROTR      Rn           LSB \u2192 Rn \u2192 T"
+],
+[
+10510,
+"RTE",
+"0000000000101011",
+"RTE                    SSR \u2192 SR, SPC \u2192 PC"
+],
+[
+10581,
+"RTS",
+"0000000000001011",
+"RTS                    PR \u2192 PC"
+],
+[
+10646,
+"SETRC",
+"0100mmmm00010100",
+"SETRC     Rm          LSW of Rm \u2192 RC (MSW of SR),"
+],
+[
+10648,
+"SETRC",
+"10000010iiiiiiii",
+"SETRC     #imm        imm \u2192 RC (MSW of SR),"
+],
+[
+10732,
+"SETS",
+"0000000001011000",
+"SETS                   1\u2192S"
+],
+[
+10761,
+"SETT",
+"0000000000011000",
+"SETT                   1\u2192T"
+],
+[
+10790,
+"SHAD",
+"0100nnnnmmmm1100",
+"SHAD      Rm,Rn         Rn << Rm \u2192 Rn (Rm \u2265 0)"
+],
+[
+10860,
+"SHAL",
+"0100nnnn00100000",
+"SHAL      Rn           T \u2190 Rn \u2190 0"
+],
+[
+10899,
+"SHAR",
+"0100nnnn00100001",
+"SHAR      Rn           MSB \u2192 Rn \u2192 T"
+],
+[
+10946,
+"SHLD",
+"0100nnnnmmmm1101",
+"SHLD      Rm,Rn          Rn << Rm \u2192 Rn (Rm \u2265 0)"
+],
+[
+11018,
+"SHLL",
+"0100nnnn00000000",
+"SHLL      Rn            T \u2190 Rn \u2190 0"
+],
+[
+11056,
+"SHLL2",
+"0100nnnn00001000",
+"SHLL2      Rn           Rn << 2 \u2192 Rn"
+],
+[
+11057,
+"SHLL8",
+"0100nnnn00011000",
+"SHLL8      Rn           Rn << 8 \u2192 Rn"
+],
+[
+11058,
+"SHLL16",
+"0100nnnn00101000",
+"SHLL16     Rn           Rn << 16 \u2192 Rn"
+],
+[
+11136,
+"SHLR",
+"0100nnnn00000001",
+"SHLR      Rn           0 \u2192 Rn \u2192 T"
+],
+[
+11175,
+"SHLR2",
+"0100nnnn00001001",
+"SHLR2      Rn          Rn>>2 \u2192 Rn"
+],
+[
+11176,
+"SHLR8",
+"0100nnnn00011001",
+"SHLR8      Rn          Rn>>8 \u2192 Rn"
+],
+[
+11177,
+"SHLR16",
+"0100nnnn00101001",
+"SHLR16     Rn          Rn>>16 \u2192 Rn"
+],
+[
+11261,
+"SLEEP",
+"0000000000011011",
+"SLEEP                   Sleep"
+],
+[
+11296,
+"STC",
+"0000nnnn00000010",
+"STC      SR,Rn            SR \u2192 Rn"
+],
+[
+11297,
+"STC",
+"0000nnnn00010010",
+"STC      GBR,Rn           GBR \u2192 Rn"
+],
+[
+11298,
+"STC",
+"0000nnnn00100010",
+"STC      VBR,Rn           VBR \u2192 Rn"
+],
+[
+11299,
+"STC",
+"0000nnnn00110010",
+"STC      SSR,Rn           SSR \u2192 Rn"
+],
+[
+11300,
+"STC",
+"0000nnnn01000010",
+"STC      SPC,Rn           SPC \u2192 Rn"
+],
+[
+11303,
+"STC",
+"0000nnnn01010010",
+"STC                       MOD \u2192 Rn"
+],
+[
+11306,
+"STC",
+"0000nnnn01110010",
+"STC                       RE \u2192 Rn"
+],
+[
+11309,
+"STC",
+"0000nnnn01100010",
+"STC                       RS \u2192 Rn"
+],
+[
+11310,
+"STC",
+"0000nnnn10000010",
+"STC      R0_BANK,Rn       R0_BANK \u2192 Rn"
+],
+[
+11311,
+"STC",
+"0000nnnn10010010",
+"STC      R1_BANK,Rn       R1_BANK \u2192 Rn"
+],
+[
+11312,
+"STC",
+"0000nnnn10100010",
+"STC      R2_BANK,Rn       R2_BANK \u2192 Rn"
+],
+[
+11313,
+"STC",
+"0000nnnn10110010",
+"STC      R3_BANK,Rn       R3_BANK \u2192 Rn"
+],
+[
+11314,
+"STC",
+"0000nnnn11000010",
+"STC      R4_BANK,Rn       R4_BANK \u2192 Rn"
+],
+[
+11315,
+"STC",
+"0000nnnn11010010",
+"STC      R5_BANK,Rn       R5_BANK \u2192 Rn"
+],
+[
+11316,
+"STC",
+"0000nnnn11100010",
+"STC      R6_BANK,Rn       R6_BANK \u2192 Rn"
+],
+[
+11317,
+"STC",
+"0000nnnn11110010",
+"STC      R7_BANK,Rn       R7_BANK \u2192 Rn"
+],
+[
+11320,
+"STC.L",
+"0100nnnn00000011",
+"STC.L SR,@-Rn             Rn \u2013 4 \u2192 Rn, SR \u2192 (Rn)"
+],
+[
+11323,
+"STC.L",
+"0100nnnn00010011",
+"STC.L GBR,@-Rn            Rn \u2013 4 \u2192 Rn, GBR \u2192 (Rn)"
+],
+[
+11326,
+"STC.L",
+"0100nnnn00100011",
+"STC.L VBR,@-Rn            Rn \u2013 4 \u2192 Rn, VBR \u2192 (Rn)"
+],
+[
+11329,
+"STC.L",
+"0100nnnn00110011",
+"STC.L SSR,@-Rn            Rn \u2013 4 \u2192 Rn, SSR \u2192 (Rn)"
+],
+[
+11332,
+"STC.L",
+"0100nnnn01000011",
+"STC.L SPC,@-Rn            Rn \u2013 4 \u2192 Rn, SPC \u2192 (Rn)"
+],
+[
+11335,
+"Rn",
+"0100nnnn01010011",
+"Rn \u2013 4 \u2192 Rn, MOD \u2192 (Rn)"
+],
+[
+11338,
+"Rn",
+"0100nnnn01110011",
+"Rn \u2013 4 \u2192 Rn, RE \u2192 (Rn)"
+],
+[
+11341,
+"Rn",
+"0100nnnn01100011",
+"Rn \u2013 4 \u2192 Rn, RS \u2192 (Rn)"
+],
+[
+11342,
+"STC.L",
+"0100nnnn10000011",
+"STC.L R0_BANK,@-Rn Rn \u2013 4 \u2192 Rn, R0_BANK \u2192 (Rn)"
+],
+[
+11343,
+"STC.L",
+"0100nnnn10010011",
+"STC.L R1_BANK,@-Rn Rn \u2013 4 \u2192 Rn, R1_BANK \u2192 (Rn)"
+],
+[
+11344,
+"STC.L",
+"0100nnnn10100011",
+"STC.L R2_BANK,@-Rn Rn \u2013 4 \u2192 Rn, R2_BANK \u2192 (Rn)"
+],
+[
+11345,
+"STC.L",
+"0100nnnn10110011",
+"STC.L R3_BANK,@-Rn Rn \u2013 4 \u2192 Rn, R3_BANK \u2192 (Rn)"
+],
+[
+11346,
+"STC.L",
+"0100nnnn11000011",
+"STC.L R4_BANK,@-Rn Rn \u2013 4 \u2192 Rn, R4_BANK \u2192 (Rn)"
+],
+[
+11347,
+"STC.L",
+"0100nnnn11010011",
+"STC.L R5_BANK,@-Rn Rn \u2013 4 \u2192 Rn, R5_BANK \u2192 (Rn)"
+],
+[
+11357,
+"STC.L",
+"0100nnnn11100011",
+"STC.L R6_BANK,@-Rn Rn \u2013 4 \u2192 Rn, R6_BANK \u2192 (Rn)"
+],
+[
+11358,
+"STC.L",
+"0100nnnn11110011",
+"STC.L R7_BANK,@-Rn Rn \u2013 4 \u2192 Rn, R7_BANK \u2192 (Rn)"
+],
+[
+11537,
+"STS",
+"0000nnnn00001010",
+"STS      MACH,Rn        MACH \u2192 Rn"
+],
+[
+11538,
+"STS",
+"0000nnnn00011010",
+"STS      MACL,Rn        MACL \u2192 Rn"
+],
+[
+11539,
+"STS",
+"0000nnnn00101010",
+"STS      PR,Rn          PR \u2192 Rn"
+],
+[
+11540,
+"STS",
+"0000nnnn01101010",
+"STS      DSR,Rn*        DSR \u2192 Rn"
+],
+[
+11541,
+"STS",
+"0000nnnn01111010",
+"STS      A0,Rn*         A0 \u2192 Rn"
+],
+[
+11542,
+"STS",
+"0000nnnn10001010",
+"STS      X0,Rn*         X0 \u2192 Rn"
+],
+[
+11543,
+"STS",
+"0000nnnn10011010",
+"STS      X1,Rn*         X1 \u2192 Rn"
+],
+[
+11544,
+"STS",
+"0000nnnn10101010",
+"STS      Y0,Rn*         Y0 \u2192 Rn"
+],
+[
+11545,
+"STS",
+"0000nnnn10111010",
+"STS      Y1,Rn*         Y1 \u2192 Rn"
+],
+[
+11546,
+"STS.L",
+"0100nnnn00000010",
+"STS.L    MACH,@\u2013Rn      Rn \u2013 4 \u2192 Rn, MACH \u2192 (Rn)"
+],
+[
+11547,
+"STS.L",
+"0100nnnn00010010",
+"STS.L    MACL,@\u2013Rn      Rn \u2013 4 \u2192 Rn, MACL \u2192 (Rn)"
+],
+[
+11548,
+"STS.L",
+"0100nnnn00100010",
+"STS.L    PR,@\u2013Rn        Rn \u2013 4 \u2192 Rn, PR \u2192 (Rn)"
+],
+[
+11549,
+"STS.L",
+"0100nnnn01100010",
+"STS.L    DSR,@\u2013Rn*      Rn \u2013 4 \u2192 Rn, DSR \u2192 (Rn)"
+],
+[
+11550,
+"STS.L",
+"0100nnnn01100010",
+"STS.L    A0,@\u2013Rn*       Rn \u2013 4 \u2192 Rn, A0 \u2192 (Rn)"
+],
+[
+11551,
+"STS.L",
+"0100nnnn10000010",
+"STS.L X0,@-Rn*          Rn \u2013 4\u2192 Rn, X0 \u2192 (Rn)"
+],
+[
+11552,
+"STS.L",
+"0100nnnn10010010",
+"STS.L X1,@-Rn*          Rn \u2013 4\u2192 Rn, X1 \u2192 (Rn)"
+],
+[
+11553,
+"STS.L",
+"0100nnnn10100010",
+"STS.L Y0,@-Rn*          Rn \u2013 4\u2192 Rn, Y0 \u2192 (Rn)"
+],
+[
+11554,
+"STS.L",
+"0100nnnn10110010",
+"STS.L Y1,@-Rn*          Rn \u2013 4\u2192 Rn, Y1 \u2192 (Rn)"
+],
+[
+11728,
+"SUB",
+"0011nnnnmmmm1000",
+"SUB       Rm,Rn        Rn \u2013 Rm \u2192 Rn"
+],
+[
+11758,
+"SUBC",
+"0011nnnnmmmm1010",
+"SUBC      Rm,Rn        Rn \u2013 Rm\u2013 T \u2192 Rn, Borrow \u2192 T"
+],
+[
+11800,
+"SUBV",
+"0011nnnnmmmm1011",
+"SUBV         Rm,Rn   Rn \u2013 Rm \u2192 Rn, Underflow \u2192 T"
+],
+[
+11856,
+"SWAP.B",
+"0110nnnnmmmm1000",
+"SWAP.B     Rm,Rn      Rm \u2192 Swap upper and lower"
+],
+[
+11858,
+"SWAP.W",
+"0110nnnnmmmm1001",
+"SWAP.W     Rm,Rn      Rm \u2192 Swap upper and lower"
+],
+[
+11916,
+"TAS.B",
+"0100nnnn00011011",
+"TAS.B     @Rn     When (Rn) is 0, 1 \u2192 T, 1 \u2192 MSB of (Rn)"
+],
+[
+12004,
+"TST",
+"0010nnnnmmmm1000",
+"TST      Rm,Rn               Rn & Rm, when result is 0,"
+],
+[
+12006,
+"TST",
+"11001000iiiiiiii",
+"TST      #imm,R0             R0 & imm, when result is"
+],
+[
+12008,
+"TST.B",
+"11001100iiiiiiii",
+"TST.B #imm,@(R0,GBR)         (R0 + GBR) & imm,"
+],
+[
+12078,
+"XOR",
+"0010nnnnmmmm1010",
+"XOR       Rm,Rn                Rn ^ Rm \u2192 Rn"
+],
+[
+12079,
+"XOR",
+"11001010iiiiiiii",
+"XOR       #imm,R0              R0 ^ imm \u2192 R0"
+],
+[
+12143,
+"XTRCT",
+"0010nnnnmmmm1101",
+"XTRCT     Rm,Rn     Rm: Center 32 bits of Rn \u2192 Rn"
+]
+]

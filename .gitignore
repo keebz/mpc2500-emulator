@@ -1,0 +1,45 @@
+# Akai firmware, manuals and other third-party material: never committed (supply your own)
+archive/
+reference/
+firmware/*
+!firmware/README.txt
+# generated
+skin/
+card/*.img
+emu/mpc2500emu
+emu/mpc2500emu_hl
+emu/mpc2500emu_asan
+emu/lcd_vram.bin
+emu/live_shot.bmp
+live_shot.bmp
+# old experiment output and the retired single-file emulator
+attic/
+*.log
+*.png
+!docs/*.png
+# every experiment directory and scratch file at the top level
+/c?/
+/c??/
+/ce*/
+/cf/
+/ch*/
+/exp_type/
+/inst/
+/ks/
+/lc*/
+/mp/
+/ou/
+/out/
+/pch*/
+/pt/
+/rv/
+/sb/
+/sw/
+/tq/
+/ca/
+/cb/
+/cc/
+/cd/
+*.bak
+__pycache__/
+.venv/
