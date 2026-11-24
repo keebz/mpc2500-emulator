@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=MPC2500 Emulator
+Comment=Emulator for MPC2500 firmware testing
+Exec=mpc2500emu
+Icon=mpc2500-emulator
+Terminal=false
+Categories=AudioVideo;Audio;Midi;

@@ -174,6 +174,22 @@ typedef struct {
 } Firmware;
 int  fw_load_file(const char *path, const char *boot_donor, Firmware *out, char *err, size_t errlen);
 void fw_free(Firmware *f);
+// ---- application support (app.c, launcher.c): packaged builds ----
+const char *app_exe_path(void);
+const char *app_res_dir(void);          // bundle resource folder (skin/, panel_map.txt) or NULL when not running from a bundle
+int  app_mode(void);                    // 1 = running from a bundle (user files live in the user's MPC2500 Emulator folder)
+const char *app_user_dir(void);
+int  app_setting_get(const char *key, char *out, size_t n);
+void app_setting_set(const char *key, const char *val);
+int  app_copy_file(const char *src, const char *dst);
+void app_open_folder(const char *dir);
+void app_restart(const char *firmware, const char *card, int pick);
+int  app_make_blank_card(const char *path, int size_mb);
+int  app_build_card(const char *srcdir, const char *outimg, char *msg, size_t msgn);
+const uint8_t *lcd_glyph(int c);        // 8x8 glyph of an ASCII character (the LCD's stand-in character generator)
+extern int card_dirty;                  // the firmware wrote to the card since it was attached
+extern const char *g_fw_dir, *g_card_dir;   // firmware / card folders in use (set by the command line)
+int  ui_launcher(const char *fwdir, char *out_fw, size_t n, const char *message);   // window to choose a firmware (SDL builds); 1 = chosen, 0 = quit
 typedef struct { char path[512]; char name[128]; char kind[24]; int ok; char note[200]; long size; } FwEntry;
 int  fw_scan_folder(const char *dir, FwEntry *out, int max);      // classify every candidate firmware file in a folder
 int  fw_find_donor(const char *dir, const char *exclude, char *path_out, size_t n);   // a full build to borrow a boot block from

@@ -19,7 +19,8 @@ It runs the stock Akai OS and third-party operating systems (JJOS family) unmodi
 - [Screenshots](#screenshots)
 - [What is emulated, and what is not](#what-is-emulated-and-what-is-not)
 - [Firmware compatibility](#firmware-compatibility)
-- [Quick start](#quick-start)
+- [Download and run](#download-and-run-no-terminal-nothing-to-install)
+- [Quick start (from source)](#quick-start-from-source)
 - [Using the front panel](#using-the-front-panel)
 - [CompactFlash cards, AUTOLOAD and internal memory](#compactflash-cards-autoload-and-internal-memory)
 - [Testing your own firmware](#testing-your-own-firmware)
@@ -42,7 +43,8 @@ This project models that machine, written from public documentation (the SH-3/SH
 - **Audio**: the firmware's own 32-voice sample engine runs on the emulated DSP; its SIOF output is decoded to stereo and played through your sound card. Panning, filters, tuning, polyphony and stereo samples work.
 - **Storage**: a CompactFlash card image in FAT16 (including `AUTOLOAD`), a 128 MB SODIMM option (or the stock 16 MB), and an 8 MB AM29LV641DL-style flash with real command sequences, so firmware that writes flash behaves realistically.
 - **Firmware-developer tooling**: fault reports (illegal instruction, wild jumps, unmapped accesses, boot-block writes), a headless mode, a scripting interface for repeatable tests, memory watchpoints, breakpoints, whole-flash save/restore and a regression suite.
-- **Linux, SDL2 window, no other dependencies** at run time.
+- **Packaged apps** for Linux and macOS with everything built in: a chooser window, drag-and-drop for firmware and card images, and card changes kept between sessions.
+- Built from source on Linux with SDL2 as the only dependency.
 
 ## Screenshots
 
@@ -99,7 +101,24 @@ The files below boot to their user interface in the emulator. Only the firmware 
 
 "Boots" means the regression suite reaches and checks the screen shown; it does not mean every feature of every firmware has been exercised. Please report differences you find against real hardware.
 
-## Quick start
+## Download and run (no terminal, nothing to install)
+
+Ready-to-run applications for Linux and macOS are attached to each release on the project's **Releases** page. Everything they need is inside; there is nothing else to install.
+
+| System | File | How to start |
+|---|---|---|
+| **Linux** (x86_64) | `MPC2500-Emulator-<version>-linux-x86_64.tar.gz` | Extract it, then double-click **MPC2500 Emulator** (if your file manager asks, choose *Run*) |
+| Linux (alternative) | `MPC2500-Emulator-<version>-linux-x86_64.AppImage` | Right-click > Properties > allow executing, then double-click (needs FUSE 2: `libfuse2` on Ubuntu 22.04+) |
+| **macOS, Apple Silicon** (M1 and later) | `MPC2500-Emulator-<version>-macOS-arm64.zip` (or `.dmg`) | Open it, drag **MPC2500 Emulator** to *Applications*, then right-click > *Open* the first time |
+| **macOS, Intel** | `MPC2500-Emulator-<version>-macOS-x86_64.zip` (or `.dmg`) | Same as above |
+
+On the first start the app creates a folder called **MPC2500 Emulator** in your home folder and shows a chooser. **Drag your firmware file onto the window**, pick it in the list and press Enter. The chooser also lets you add a CompactFlash card image (drop a `.img` file), create a blank card, or build a card from a folder of files, all with the mouse:
+
+<p align="center"><img src="docs/images/launcher.png" alt="The firmware chooser" width="640"></p>
+
+Next time the app starts the firmware you used last. While it runs: drop another firmware or card file on the window to switch, `Ctrl+O` returns to the chooser, and what the firmware saves to the card is kept. macOS shows a one-time security prompt because the app is not notarised by Apple (see [packaging/README.md](packaging/README.md#notes)). To build the applications yourself see [packaging/README.md](packaging/README.md).
+
+## Quick start (from source)
 
 Full step-by-step instructions, with different firmware types, are in **[QUICKSTART.md](QUICKSTART.md)**. In short, on Ubuntu/Debian:
 
@@ -123,6 +142,7 @@ cp /path/to/your/firmware.bin firmware/
 | Keyboard | See the picture above (`panel_map.txt` holds the map and can be edited) |
 | `Tab` (hold) | Fast-forward (8x) |
 | `Ctrl+R` | Power cycle (flash and card contents survive, RAM is cleared) |
+| `Ctrl+O` | Return to the firmware chooser (packaged app) |
 | `Esc` | Quit |
 
 Combinations work as on the hardware by holding one key on the keyboard and using the mouse for the other, for example `MODE` (`D`) held while clicking `PAD 1`.
@@ -165,7 +185,7 @@ NOTES.md    engineering notes: what was learned about the hardware and how
 ```
 
 ## Known limitations
-- Linux only. macOS probably builds but is untested; Windows is not supported (the scripting mode uses `fork()`).
+- Linux and macOS only (Windows is not supported; the scripting mode uses `fork()`). The macOS app is built by the project's CI and has **not been run on a Mac by the author**; it is not notarised by Apple.
 - MIDI, USB, audio inputs, digital I/O, the analogue REC GAIN / MAIN VOLUME knobs, the hard-disk and CD options, and the real-time clock are not emulated.
 - The Q-Link inputs are decoded from the firmware's behaviour: Q1 and Q2 are verified on the Mixer page; Q3 and Q4 are assigned by the order the firmware scans its analogue inputs.
 - The LCD uses a stand-in character generator, so text glyphs differ slightly from the real display ROM.

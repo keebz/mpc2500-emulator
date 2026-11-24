@@ -4,6 +4,31 @@ This guide takes you from nothing to a running MPC2500 on your screen, and then 
 
 > **Disclaimer.** This software is provided "as is", without warranty of any kind, and the authors accept no liability for its use (see the full text in [README.md](README.md#mpc2500-emulator)). It is unofficial and not affiliated with Akai Professional. **No firmware is included** — you need your own firmware files and the right to use them. A firmware that runs in the emulator is **not** guaranteed to be safe on real hardware.
 
+## Easiest way: the packaged app (no terminal, nothing to install)
+
+Download the file for your system from the project's **Releases** page. It contains everything the emulator needs.
+
+| System | Download | Start it |
+|---|---|---|
+| Linux (x86_64) | `...-linux-x86_64.tar.gz` | Extract the archive, double-click **MPC2500 Emulator** (choose *Run* if asked) |
+| Linux (alternative) | `...-linux-x86_64.AppImage` | Allow executing (right-click > Properties > Permissions), double-click. Needs `libfuse2` on recent Ubuntu; use the tar.gz if it will not start |
+| macOS, Apple Silicon (M1 or later) | `...-macOS-arm64.zip` or `.dmg` | Drag **MPC2500 Emulator** to *Applications* |
+| macOS, Intel | `...-macOS-x86_64.zip` or `.dmg` | Same |
+
+**macOS, first launch only:** the app is not notarised by Apple, so macOS blocks a normal double-click. Right-click (or Control-click) **MPC2500 Emulator**, choose **Open**, then **Open** again. If macOS still refuses, open *System Settings > Privacy & Security* and choose *Open Anyway* next to the message about the app.
+
+**First start:** the app creates a folder named **MPC2500 Emulator** in your home folder (with `firmware`, `card` and `card-files` inside) and shows the chooser:
+
+![The firmware chooser](docs/images/launcher.png)
+
+1. **Drag your firmware file onto the window** (or copy it into the `firmware` folder and press `R`). The list shows what each file is.
+2. Select it and press **Enter** (or double-click it). The emulator window opens and the firmware boots.
+3. **CompactFlash card (optional):** drop a card image (`.img`) onto the window to use it; or press **N** for a blank 128 MB card (format it once in the firmware: `MODE` + `PAD 2`, `F3` UTILIT, `F6` DO IT); or put files in the `card-files` folder (a sub-folder such as `AUTOLOAD` works too) and press **B** to build a card from them. Whatever the firmware saves to the card is kept for next time.
+
+**Afterwards:** the app starts the last firmware by itself. Drop another firmware or card file on the running window to switch, press `Ctrl+O` to return to the chooser, `Esc` to quit. The panel controls are described in [section 4](#4-first-run); the other sections of this guide are for people building from source or testing firmware from the command line.
+
+---
+
 ## Contents
 1. [What you need](#1-what-you-need)
 2. [Installation](#2-installation)

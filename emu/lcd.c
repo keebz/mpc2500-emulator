@@ -81,6 +81,7 @@ void lcd_cmd_write(uint8_t c) {
     L.nparam = 0;
 }
 
+const uint8_t *lcd_glyph(int c) { return (c >= 0x20 && c < 0x80) ? cg_rom[c - 0x20] : cg_rom[0]; }
 static const uint8_t *glyph(uint8_t code) {
     static uint8_t tmp[8];
     int ext = (L.mode & 8) != 0;                                 // external CG RAM for every code

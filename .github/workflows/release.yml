@@ -1,0 +1,86 @@
+name: Release builds
+
+# Builds the Linux and macOS applications and attaches them to a GitHub release.
+#   - push a tag like v1.0.0 -> builds and publishes a release with the files attached
+#   - "Run workflow" (manual) -> builds only and keeps the files as workflow artifacts
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  skin:
+    # the panel artwork is generated once (it needs Pillow and the Liberation fonts) and shared with the other jobs
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y python3-pil fonts-liberation
+      - run: python3 tools/make_skin.py skin
+      - uses: actions/upload-artifact@v4
+        with:
+          name: skin
+          path: skin
+
+  linux:
+    needs: skin
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: skin
+          path: skin
+      - name: Build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential curl libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxss-dev libxfixes-dev libxkbcommon-dev \
+            libwayland-dev wayland-protocols libdrm-dev libgbm-dev libegl1-mesa-dev libgl1-mesa-dev libasound2-dev libpulse-dev libpipewire-0.3-dev libdecor-0-dev libdbus-1-dev
+      - name: Fetch appimagetool
+        run: curl -fsSL -o appimagetool https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage && chmod +x appimagetool
+      - name: Build
+        run: APPIMAGETOOL=$PWD/appimagetool packaging/linux/build.sh "${GITHUB_REF_NAME:-dev}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: dist/*
+
+  macos:
+    needs: skin
+    strategy:
+      matrix:
+        os: [macos-14, macos-13]          # Apple Silicon (arm64) and Intel (x86_64)
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: skin
+          path: skin
+      - name: Build
+        run: packaging/macos/build.sh "${GITHUB_REF_NAME:-dev}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-zip-${{ matrix.os }}
+          path: dist/*.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg-${{ matrix.os }}
+          path: dist/*.dmg
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [linux, macos]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ls -la artifacts
+          gh release create "$GITHUB_REF_NAME" artifacts/* --repo "$GITHUB_REPOSITORY" --title "MPC2500 Emulator $GITHUB_REF_NAME" --generate-notes

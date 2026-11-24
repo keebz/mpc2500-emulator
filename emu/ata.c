@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-int card_present;
+int card_present, card_dirty;
 uint64_t ata_sectors_read, ata_sectors_written;
 
 static uint8_t *card; static size_t card_bytes;
@@ -17,7 +17,7 @@ enum { ST_ERR = 0x01, ST_DRQ = 0x08, ST_DSC = 0x10, ST_DRDY = 0x40 };
 int card_attach(const uint8_t *image, size_t len) {
     free(card); card = malloc(len ? len : 1);
     if (!card) return -1;
-    memcpy(card, image, len); card_bytes = len; card_present = 1;
+    memcpy(card, image, len); card_bytes = len; card_present = 1; card_dirty = 0;
     ata_reset();
     return 0;
 }
@@ -27,7 +27,7 @@ int card_attach_file(const char *path) {
     if (n <= 0) { fclose(f); return -1; }
     free(card); card = malloc((size_t)n);
     if (!card || fread(card, 1, (size_t)n, f) != (size_t)n) { fclose(f); free(card); card = 0; return -1; }
-    fclose(f); card_bytes = (size_t)n; card_present = 1;
+    fclose(f); card_bytes = (size_t)n; card_present = 1; card_dirty = 0;
     ata_reset();
     return 0;
 }
@@ -126,7 +126,7 @@ void ata_write(uint32_t off, uint32_t v, int size) {
         if (ata.writing && (ata.status & ST_DRQ)) {
             ata.buf[ata.pos] = (uint8_t)v; ata.buf[ata.pos + 1] = (uint8_t)(v >> 8); ata.pos += 2;
             if (ata.pos >= 512) {
-                if ((uint64_t)ata.lba * 512 + 512 <= card_bytes) memcpy(card + (size_t)ata.lba * 512, ata.buf, 512);
+                if ((uint64_t)ata.lba * 512 + 512 <= card_bytes) { memcpy(card + (size_t)ata.lba * 512, ata.buf, 512); card_dirty = 1; }
                 ata_sectors_written++; ata.pos = 0; ata.lba++;
                 if (--ata.remain <= 0) { ata.status = ST_DRDY | ST_DSC; ata.writing = 0; }
             }

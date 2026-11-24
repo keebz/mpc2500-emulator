@@ -233,6 +233,7 @@ int ui_run(const char *skin_dir, const char *keymap) {
                 const char *nx = strchr(q, ';'); if (!nx) break; q = nx + 1;
             }
         }
+        if (getenv("LIVE_DROP") && (int)frames == atoi(getenv("LIVE_DROP"))) { SDL_Event de; memset(&de, 0, sizeof de); de.type = SDL_DROPFILE; de.drop.file = SDL_strdup(strchr(getenv("LIVE_DROP"), ':') + 1); SDL_PushEvent(&de); }   // test hook: "frame:/path"
         if (getenv("LIVE_QSET")) {                       // test hook: "frame:Qn:value;..." moves a Q-Link control at a given frame
             const char *q = getenv("LIVE_QSET");
             while (*q) { int fr, qi, val; if (sscanf(q, "%d:%d:%d", &fr, &qi, &val) == 3 && (uint64_t)fr == frames && qi >= 1 && qi <= 4) qv[qi] = val; const char *nx = strchr(q, ';'); if (!nx) break; q = nx + 1; }
@@ -246,6 +247,7 @@ int ui_run(const char *skin_dir, const char *keymap) {
                 SDL_Keycode ks = e.key.keysym.sym; int ctrl = (e.key.keysym.mod & KMOD_CTRL) != 0;
                 if (dn && ks == SDLK_ESCAPE) running = 0;
                 else if (dn && ctrl && ks == SDLK_r) reset_requested = 1;
+                else if (dn && ctrl && ks == SDLK_o) { emu_alive = 0; SDL_UnlockMutex(emu_lock); app_restart(0, 0, 1); SDL_LockMutex(emu_lock); }     // back to the firmware chooser
                 else if (ks == SDLK_TAB) { ff = dn; ff_mode = dn; emu_t0_ticks = SDL_GetPerformanceCounter(); emu_base_cycles = cpu.cycles; }
                 else if (dn && ks == SDLK_RIGHTBRACKET) wheel_turn(1);
                 else if (dn && ks == SDLK_LEFTBRACKET) wheel_turn(-1);
@@ -253,6 +255,16 @@ int ui_run(const char *skin_dir, const char *keymap) {
                     for (int i = 0; i < nbinds; i++) if (binds[i].key == ks) panel_press(binds[i].col, binds[i].row, dn);
                     for (int i = 0; i < npadbinds; i++) if (padbinds[i].key == ks) { if (dn) pad_down(padbinds[i].col, 100); else pad_up(padbinds[i].col); }
                 }
+            } else if (e.type == SDL_DROPFILE) {              // a file dropped on the window: a card image (.img) or a firmware; restart with it
+                char *f = e.drop.file; const char *bn = strrchr(f, '/') ? strrchr(f, '/') + 1 : f; size_t ln = strlen(f); char dst[1100];
+                if (ln > 4 && !strcasecmp(f + ln - 4, ".img")) {
+                    snprintf(dst, sizeof dst, "%s/%s", g_card_dir, bn);
+                    if (!strcmp(f, dst) || app_copy_file(f, dst) == 0) { app_setting_set("card", dst); emu_alive = 0; SDL_UnlockMutex(emu_lock); app_restart(0, dst, 0); SDL_LockMutex(emu_lock); }
+                } else {
+                    snprintf(dst, sizeof dst, "%s/%s", g_fw_dir, bn);
+                    if (!strcmp(f, dst) || app_copy_file(f, dst) == 0) { app_setting_set("firmware", dst); emu_alive = 0; SDL_UnlockMutex(emu_lock); app_restart(dst, 0, 0); SDL_LockMutex(emu_lock); }
+                }
+                SDL_free(f);
             } else if (e.type == SDL_MOUSEWHEEL) { if (e.wheel.y) wheel_turn(e.wheel.y > 0 ? abs(e.wheel.y) : -abs(e.wheel.y)); }
             else if (e.type == SDL_MOUSEMOTION || e.type == SDL_MOUSEBUTTONDOWN || e.type == SDL_MOUSEBUTTONUP) {
                 int mx = e.type == SDL_MOUSEMOTION ? e.motion.x : e.button.x, my = e.type == SDL_MOUSEMOTION ? e.motion.y : e.button.y;

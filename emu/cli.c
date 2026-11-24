@@ -32,10 +32,13 @@ static void usage(const char *prog) {
            "  --flash-state FILE  start from a saved whole-flash image instead of the firmware\n", prog);
 }
 
+const char *g_fw_dir = "firmware", *g_card_dir = "card";
+
 static int is_number(const char *s) { if (!*s) return 0; for (; *s; s++) if (*s < '0' || *s > '9') return 0; return 1; }
 
 int main(int argc, char **argv) {
     const char *fw_path = 0, *fw_dir = 0, *donor = 0, *card_path = getenv("CARD"), *skin = "skin", *keymap = "panel_map.txt", *save_flash = 0, *flash_state = 0, *save_card = 0;
+    int pick = 0;
     int ram_mb = getenv("SODIMM_MB") ? atoi(getenv("SODIMM_MB")) : 128, list = 0, headless = 0, want_live = 0;
     enum { M_AUTO, M_EXP, M_SWEEP, M_STEPS } mode = M_AUTO;
     uint64_t steps = 5000000; const char *exp_dir = 0; uint64_t boot_steps = 300000000ull; int exp_n = 0; char **exp_specs = 0;
@@ -58,6 +61,7 @@ int main(int argc, char **argv) {
         else if (!strcmp(a, "--flash-state") && i + 1 < argc) flash_state = argv[++i];
         else if (!strcmp(a, "--save-card") && i + 1 < argc) save_card = argv[++i];
         else if (!strcmp(a, "--list")) list = 1;
+        else if (!strcmp(a, "--pick")) pick = 1;
         else if (!strcmp(a, "--headless")) headless = 1;
         else if (!strcmp(a, "--live")) { want_live = 1; if (i + 1 < argc && argv[i + 1][0] != '-' && !is_number(argv[i + 1])) keymap = argv[++i]; }
         else if (!strcmp(a, "--fault-strict")) fault_strict = 1;
@@ -71,42 +75,85 @@ int main(int argc, char **argv) {
     if (mode == M_EXP || mode == M_SWEEP) headless = 1;
     (void)want_live;
 
-    char err[400] = "", path_buf[600];
+    char err[400] = "", path_buf[600], skin_buf[600], key_buf[600], card_buf[700], fw_dir_buf[700];
+    const int appm = app_mode();
+#ifdef USE_SDL
+    const int window_mode = !headless && mode == M_AUTO && !list;
+#else
+    const int window_mode = 0;
+#endif
+    if (appm) {                          // packaged build: resources inside the bundle, the user's files in their MPC2500 Emulator folder
+        const char *rd = app_res_dir(), *ud = app_user_dir();
+        if (!strcmp(skin, "skin")) { snprintf(skin_buf, sizeof skin_buf, "%s/skin", rd); skin = skin_buf; }
+        if (!strcmp(keymap, "panel_map.txt")) { snprintf(key_buf, sizeof key_buf, "%s/panel_map.txt", rd); keymap = key_buf; }
+        if (!fw_dir) { snprintf(fw_dir_buf, sizeof fw_dir_buf, "%s/firmware", ud); fw_dir = fw_dir_buf; }
+        g_card_dir = strdup((snprintf(card_buf, sizeof card_buf, "%s/card", ud), card_buf));
+        if (!card_path) {
+            char saved[600]; FILE *t;
+            if (app_setting_get("card", saved, sizeof saved) && (t = fopen(saved, "rb"))) { fclose(t); card_path = strdup(saved); }
+            else { snprintf(card_buf, sizeof card_buf, "%s/card/card.img", ud); if ((t = fopen(card_buf, "rb"))) { fclose(t); card_path = strdup(card_buf); } }
+        }
+    }
     if (!fw_dir) fw_dir = "firmware";
-    if (!fw_path && !flash_state) {
+    g_fw_dir = fw_dir;
+    if (!fw_path && !flash_state && window_mode && !pick && appm) {                      // reuse the firmware chosen last time
+        char saved[600]; FILE *t; if (app_setting_get("firmware", saved, sizeof saved) && (t = fopen(saved, "rb"))) { fclose(t); snprintf(path_buf, sizeof path_buf, "%s", saved); fw_path = path_buf; }
+    }
+    int need_pick = pick && window_mode;
+    const char *pick_msg = 0;
+#ifndef USE_SDL
+    need_pick = 0;
+#endif
+    for (;;) {                                                                    // choose and load the firmware; in a window build a failure returns to the chooser
+    if (!fw_path && !flash_state && !need_pick) {
         FwEntry list_e[64]; int n = fw_scan_folder(fw_dir, list_e, 64);
-        if (n < 0) { fprintf(stderr, "firmware folder '%s' not found.\nCreate it and put your firmware file in it, or pass --firmware FILE.\n", fw_dir); return 2; }
-        int ok = 0, pick = -1;
-        for (int i = 0; i < n; i++) if (list_e[i].ok && strcmp(list_e[i].kind, "sos") != 0) { ok++; pick = i; }
+        if (n < 0 && !window_mode) { fprintf(stderr, "firmware folder '%s' not found.\nCreate it and put your firmware file in it, or pass --firmware FILE.\n", fw_dir); return 2; }
+        int ok = 0, pick_i = -1;
+        for (int i = 0; i < n; i++) if (list_e[i].ok && strcmp(list_e[i].kind, "sos") != 0) { ok++; pick_i = i; }
         if (list) {
             printf("firmware folder: %s\n", fw_dir);
             for (int i = 0; i < n; i++) printf("  %-34s %9ld bytes  %-12s %s\n", list_e[i].name, list_e[i].size, list_e[i].kind, list_e[i].note);
             if (!n) printf("  (no firmware files found)\n");
             return 0;
         }
-        if (n == 0) { fprintf(stderr, "no firmware found in '%s'. Put an MPC2500 firmware file (.bin / .osx / .os3 / .sos) there.\n", fw_dir); return 2; }
-        if (ok == 0) { for (int i = 0; i < n; i++) if (list_e[i].ok) pick = i; if (pick >= 0) ok = 1; }
-        if (ok != 1) {
-            fprintf(stderr, "%d firmware files in '%s'; choose one with --firmware:\n", n, fw_dir);
-            for (int i = 0; i < n; i++) fprintf(stderr, "  %-34s %-12s %s\n", list_e[i].name, list_e[i].kind, list_e[i].note);
-            return 2;
-        }
-        snprintf(path_buf, sizeof path_buf, "%s", list_e[pick].path); fw_path = path_buf;
+        if (ok == 0) { for (int i = 0; i < n; i++) if (list_e[i].ok) pick_i = i; if (pick_i >= 0) ok = 1; }
+        if (n <= 0 || ok != 1) {
+            if (window_mode) need_pick = 1;
+            else if (n == 0) { fprintf(stderr, "no firmware found in '%s'. Put an MPC2500 firmware file (.bin / .osx / .os3 / .sos) there.\n", fw_dir); return 2; }
+            else {
+                fprintf(stderr, "%d firmware files in '%s'; choose one with --firmware:\n", n, fw_dir);
+                for (int i = 0; i < n; i++) fprintf(stderr, "  %-34s %-12s %s\n", list_e[i].name, list_e[i].kind, list_e[i].note);
+                return 2;
+            }
+        } else { snprintf(path_buf, sizeof path_buf, "%s", list_e[pick_i].path); fw_path = path_buf; }
     }
+#ifdef USE_SDL
+    if (need_pick) {
+        if (!ui_launcher(fw_dir, path_buf, sizeof path_buf, pick_msg)) return 0;
+        fw_path = path_buf; need_pick = 0; pick_msg = 0;
+    }
+#endif
     if (list) { FwEntry le[64]; int n = fw_scan_folder(fw_dir, le, 64); printf("firmware folder: %s\n", fw_dir); for (int i = 0; i < n; i++) printf("  %-34s %9ld bytes  %-12s %s\n", le[i].name, le[i].size, le[i].kind, le[i].note); return 0; }
 
     Firmware fw; char donor_buf[600];
     if (flash_state) {
         if (flash_load_state(flash_state) != 0) { fprintf(stderr, "cannot load flash state %s\n", flash_state); return 2; }
         printf("Flash state: %s\n", flash_state);
+        break;
     } else {
         if (!donor) { const char *slash = strrchr(fw_path, '/'); char dir[600]; if (slash) { snprintf(dir, sizeof dir, "%.*s", (int)(slash - fw_path), fw_path); } else snprintf(dir, sizeof dir, "."); if (fw_find_donor(dir, fw_path, donor_buf, sizeof donor_buf)) donor = donor_buf; }
-        if (fw_load_file(fw_path, donor, &fw, err, sizeof err) != 0) { fprintf(stderr, "Cannot load firmware: %s\n", err); return 2; }
+        if (fw_load_file(fw_path, donor, &fw, err, sizeof err) != 0) {
+            fprintf(stderr, "Cannot load firmware: %s\n", err);
+            if (window_mode) { need_pick = 1; fw_path = 0; pick_msg = err; donor = 0; continue; }
+            return 2;
+        }
         printf("Firmware: %s - %s\n%s", fw.name, fw.kind, fw.report);
         if (flash_attach(fw.flash_image, fw.flash_len) != 0) { fprintf(stderr, "cannot place the firmware in the flash device\n"); return 2; }
         fw_free(&fw);
+        break;
     }
-    if (!card_path) { FILE *t = fopen("card/card.img", "rb"); if (t) { fclose(t); card_path = "card/card.img"; } }
+    }                                                                              // end of the choose-and-load loop
+    if (!card_path && !appm) { FILE *t = fopen("card/card.img", "rb"); if (t) { fclose(t); card_path = "card/card.img"; } }
     if (card_path) {
         if (card_attach_file(card_path) != 0) fprintf(stderr, "warning: cannot read card image %s; running without a card\n", card_path);
         else printf("Card: %s\n", card_path);
@@ -132,6 +179,7 @@ int main(int argc, char **argv) {
         fprintf(stderr, "this build has no window support (built without SDL2); use --headless/--steps/--exp, or rebuild with SDL2\n"); rc = 2;
 #endif
     }
+    if (appm && card_dirty && card_path && !save_card) { if (card_save(card_path) != 0) fprintf(stderr, "could not write the card image %s\n", card_path); }   // a real card keeps what was saved to it
     if (save_card) { if (card_save(save_card) == 0) printf("Card saved to %s\n", save_card); else fprintf(stderr, "could not write %s\n", save_card); }
     if (save_flash) { if (flash_save(save_flash) == 0) printf("Flash saved to %s\n", save_flash); else fprintf(stderr, "could not write %s\n", save_flash); }
     return rc;
