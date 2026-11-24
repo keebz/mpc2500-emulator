@@ -195,7 +195,7 @@ int ui_launcher(const char *fwdir, char *out_fw, size_t outn, const char *messag
         int do_action = 0;
         { static int fr; if (getenv("LAUNCHER_ENTER") && ++fr == 3) do_action = B_START; }
         { static int fr2; const char *acts = getenv("LAUNCHER_ACTIONS");        // test hook: one action per 4 frames, b = build card, e = eject, s = start
-          if (acts && ++fr2 % 4 == 0 && (size_t)(fr2 / 4 - 1) < strlen(acts)) { char c = acts[fr2 / 4 - 1]; do_action = c == 'b' ? B_BUILD : c == 'e' ? B_EJECT : c == 's' ? B_START : c == 'i' ? B_FLASH : c == 'm' ? B_RAM : c == 'h' ? B_HELP : c == 'q' ? B_QUIT : 0; } }       // test hook: press Start after a few frames
+          if (acts && ++fr2 % 4 == 0 && (size_t)(fr2 / 4 - 1) < strlen(acts)) { char c = acts[fr2 / 4 - 1]; do_action = c == 'b' ? B_BUILD : c == 'e' ? B_EJECT : c == 's' ? B_START : c == 'i' ? B_FLASH : c == 'm' ? B_RAM : c == 'h' ? B_HELP : c == 'q' ? B_QUIT : c == 'd' ? B_DIRECT : c == 'x' ? B_RESET : 0; } }       // test hook: press Start after a few frames
         Btn btns[24]; int nb = 0;
         int by = WIN_H - 56, cy = 488;
         btns[nb++] = (Btn){ 36, cy, 210, 34, "1  Card-files folder (F)", B_FILES };
@@ -358,7 +358,7 @@ int ui_launcher(const char *fwdir, char *out_fw, size_t outn, const char *messag
             ptext(ren, b.x + (b.w - pw(1, btns[i].label)) / 2, b.y + (b.h - 18) / 2, 1, white, btns[i].label, 0);
         }
         static int shot_frames; const char *shot = getenv("LAUNCHER_SHOT");        // test hook: save a screenshot after a few frames and quit
-        if (shot && ++shot_frames == 5) { SDL_Surface *sf = SDL_CreateRGBSurfaceWithFormat(0, WIN_W, WIN_H, 32, SDL_PIXELFORMAT_ARGB8888); SDL_RenderReadPixels(ren, 0, SDL_PIXELFORMAT_ARGB8888, sf->pixels, sf->pitch); SDL_SaveBMP(sf, shot); SDL_FreeSurface(sf); result = 0; }
+        if (shot && ++shot_frames == (getenv("LAUNCHER_SHOT_AT") ? atoi(getenv("LAUNCHER_SHOT_AT")) : 5)) { SDL_Surface *sf = SDL_CreateRGBSurfaceWithFormat(0, WIN_W, WIN_H, 32, SDL_PIXELFORMAT_ARGB8888); SDL_RenderReadPixels(ren, 0, SDL_PIXELFORMAT_ARGB8888, sf->pixels, sf->pitch); SDL_SaveBMP(sf, shot); SDL_FreeSurface(sf); result = 0; }
         SDL_RenderPresent(ren);
         if (result < 0) SDL_Delay(8);
     }

@@ -17,26 +17,59 @@ Download the file for your system from the project's **Releases** page. It conta
 
 **macOS, first launch only:** the app is not notarised by Apple, so macOS blocks a normal double-click. Right-click (or Control-click) **MPC2500 Emulator**, choose **Open**, then **Open** again. If macOS still refuses, open *System Settings > Privacy & Security* and choose *Open Anyway* next to the message about the app.
 
-**First start:** the app creates a folder named **MPC2500 Emulator** in your home folder (with `firmware`, `card` and `card-files` inside) and shows the chooser:
+**First start:** the app creates a folder named **MPC2500 Emulator** in your home folder (with `firmware`, `card` and `card-files` inside) and shows the **firmware and card page**, called the chooser in this guide. Everything below is done with its buttons; you never need a terminal. This is the chooser the first time, before any OS is installed:
 
-![The firmware chooser](docs/images/launcher.png)
+![The chooser on first start: no virtual unit yet](docs/images/chooser_first.png)
 
-1. **Drag your firmware file onto the window** (or copy it into the `firmware` folder and press `R`). The list shows what each file is. Start with the stock Akai OS.
-2. Select it and click **Flash OS** (or press `I`, or double-click it). This creates your **virtual unit**, the emulated flash chip that is kept in the file `unit.flash`, installs the OS on it the way the Akai updater does, and powers it on.
-3. **Put your kits and sounds on the memory card.** The firmware can only load files from the card, so they have to go on one:
-   1. Click **1 Card-files folder** (or press `F`). Your file manager opens the `card-files` folder. Copy your kits and sounds into it (`.PGM`, `.SND`, `.WAV`, `.SEQ`, `.ALL`...). Sub-folders are fine. A folder named `AUTOLOAD` is loaded by the firmware at start-up, as on the real unit.
-   2. Click **2 Build card** (or press `B`). This makes the card image from that folder. It replaces the current card (the old one is kept as `card.img.bak`), so do it again whenever you add files.
+| Part of the page | What it does |
+|---|---|
+| **Virtual unit** line (top) | Shows which OS is installed in your emulated unit, or "none yet" |
+| **Quick Start (H)** | Opens this guide |
+| **Reset unit (X)** | Erases the virtual unit: the installed OS, settings and internal memory (asks twice) |
+| **RAM: 16 MB (M)** | Switches the unit's memory between the stock 16 MB and the 128 MB expansion |
+| **Firmware list** | Every firmware file in your `firmware` folder and what it is (OS build, XL OS image...). Select a row with the mouse or the Up/Down keys |
+| **1 Card-files folder (F)** | Opens the `card-files` folder in your file manager: put your kits and sounds there |
+| **2 Build card (B)** | Builds the memory card image from that folder |
+| **Blank card (N)** | Creates an empty card (nothing on it) |
+| **Eject (E)** | Starts the unit without a memory card |
+| **Show card (C)** | Opens the folder that holds the card image |
+| **Power on (Enter)** | Starts the unit with the OS that is installed in it |
+| **Flash OS (I)** | Installs the selected OS build into the unit (double-clicking a row does the same) |
+| **Developer direct load (D)** | A shortcut that skips the installer (see [section 8.3](#83-xl-firmware-osx-os3)) |
+| **Folders (O)** | Opens the `firmware` folder |
+| **Quit** | Closes the emulator |
+
+To add firmware, **drag the file onto this page** (or copy it into the `firmware` folder and press `R`).
+
+1. **Install an OS.** Select the stock Akai OS in the list and click **Flash OS**. This creates your **virtual unit** (the file `unit.flash`), installs the OS the way the Akai updater does, and powers it on. The chooser now shows the installed OS on the "Virtual unit" line:
+
+   ![The chooser with an OS installed in the virtual unit](docs/images/launcher.png)
+
+2. **Put your kits and sounds on the memory card.** The firmware can only load files from the card, so they have to go on one:
+   1. Click **1 Card-files folder** and copy your kits and sounds into it (`.PGM`, `.SND`, `.WAV`, `.SEQ`, `.ALL`...). Sub-folders are fine. A folder named `AUTOLOAD` is loaded by the firmware at start-up, as on the real unit (section 6.3).
+   2. Click **2 Build card**. This makes the card image from that folder; the "Card:" line and a message confirm it. It replaces the current card (the old one is kept as `card.img.bak`), so build again whenever you add files:
+
+      ![After Build card: the Card line shows the new card](docs/images/chooser_card_built.png)
+
    3. Click **Power on**. In the firmware press **LOAD** to see the card.
 
-   Other options: **Blank card** makes an *empty* card (nothing on it), **Eject** starts without a card, **Show card** opens the folder holding the card image, and you can drop an existing card image (`.img`) onto the window to use it. Whatever the firmware saves to the card is kept in the card image.
+   Other options: **Blank card** makes an *empty* card, **Eject** starts without a card, **Show card** opens the folder holding the card image, and you can drop an existing card image (`.img`) onto the page to use it. Whatever the firmware saves to the card is kept in the card image.
 
-**Installing an XL OS** (one larger than the stock OS area) is different from a normal install, and it overwrites internal memory: read [section 4](#4-installing-an-extra-large-xl-os) first.
+3. **Choose the memory.** The unit starts with the stock 16 MB. Click **RAM** (or press `M`) to switch to the 128 MB expansion if your kit needs it. The same page also shows the state of **Developer direct load**:
 
-**Afterwards:** the chooser appears at every start; press **Enter** (**Power on**) to start the unit as you left it, with its installed OS, settings and internal memory. `Ctrl+O` returns to the chooser from the running emulator, `Esc` quits. The panel controls are described in [section 5](#5-first-run); the other sections of this guide are for people building from source or testing firmware from the command line.
+   ![RAM set to 128 MB; Developer direct load is off](docs/images/chooser_direct_ram.png)
+
+**Installing an XL OS** (one larger than the stock OS area) is different from a normal install, and it overwrites internal memory. Selecting one and clicking **Flash OS** is refused, with this explanation on the page:
+
+![Flash OS refuses an XL OS image](docs/images/chooser_xl_refused.png)
+
+Read [section 4](#4-installing-an-extra-large-xl-os) first.
+
+**Afterwards:** the chooser appears at every start; press **Enter** (**Power on**) to start the unit as you left it, with its installed OS, settings and internal memory. `Ctrl+O` returns to the chooser from the running emulator, `Esc` quits. The panel controls are described in [section 5](#5-first-run); sections 2 and 7 are for people building from source or testing firmware from the command line.
 
 ## Memory and card size
 
-- **Memory (RAM):** the emulated unit starts with the **stock 16 MB** of memory, as shipped. To emulate the optional 128 MB expansion (EXM128), click **RAM: 16 MB** in the chooser (or press `M`) to switch it to 128 MB, or pass `--ram 128` on the command line. A kit that is larger than the free sample memory will not load with the stock 16 MB, just as on a real unit.
+- **Memory (RAM):** the emulated unit starts with the **stock 16 MB** of memory, as shipped. To emulate the optional 128 MB expansion (EXM128), click **RAM: 16 MB** in the chooser (or press `M`) to switch it to 128 MB, or pass `--ram 128` when running from source. A kit that is larger than the free sample memory will not load with the stock 16 MB, just as on a real unit.
 - **Card size:** the card image is a separate file (a virtual CompactFlash card) and has nothing to do with the unit's memory. The 128 MB that you see is only the default size the emulator gives a new card; **Build card** makes it larger when your files need more. The unit's memory is never stored on the card.
 
 ## Where the app keeps your files (and how to uninstall)
@@ -82,6 +115,8 @@ The first time the packaged app starts it creates a folder called **MPC2500 Emul
 | Firmware | At least one MPC2500 firmware file (see [section 3](#3-getting-firmware-files)) |
 
 ## 2. Installation
+
+*This section is only for building the emulator from source. If you use the downloaded app (see the beginning of this guide) skip to section 3.*
 
 ### 2.1 Ubuntu, Debian, Linux Mint
 
@@ -241,14 +276,9 @@ In the chooser: select an OS that fits and has its own installer, and click **Fl
 
 ## 5. First run
 
-1. Put one firmware file in `firmware/` (or pass `--firmware path/to/file`).
-2. Start the emulator:
+**With the app:** in the chooser (see the beginning of this guide) select an OS and click **Flash OS** the first time, or **Power on** afterwards. The emulator window opens and the firmware boots in a few seconds. Use **Ctrl+O** (or the **Firmware / Card** button on the window's top edge) to come back to the chooser.
 
-```bash
-./run_live.sh
-```
-
-The first start generates the panel artwork (`skin/`) and builds the emulator if needed. A window opens and the firmware boots in a few seconds.
+**From source:** put one firmware file in `firmware/` and run `./run_live.sh` (or pass `--firmware path/to/file`). The first start generates the panel artwork (`skin/`) and builds the emulator if needed.
 
 ![The emulator window](docs/images/panel.png)
 
@@ -273,29 +303,21 @@ Open the Load page with `MODE` (`D`) + `PAD 2` to see a card (once you have one,
 
 ## 6. CompactFlash cards, kits and AUTOLOAD
 
-The firmware reads and writes a CompactFlash card in the slot. The emulator presents a FAT16 disk image as that card.
+The firmware reads and writes a CompactFlash card in the slot. The emulator presents a FAT16 disk image as that card, and the chooser builds it for you.
 
 ### 6.1 Create a card image from files
 
-```bash
-python3 tools/mkfat16.py card/card.img 128 KIT.PGM SAMPLE1.SND SAMPLE2.SND
-```
-This builds a 128 MB image (MBR + FAT16) holding those files in the root folder (`--dir NAME` puts files into a sub-folder). `card/card.img` is inserted automatically on the next start; use `--card other.img` for another one. The emulator works on an in-memory copy, so your image is never modified — add `--save-card FILE` if you want what the firmware saved to the card:
+In the chooser: **1 Card-files folder**, copy your files in, **2 Build card** (see the screenshots at the beginning of this guide). The card is built from everything in that folder, including sub-folders one level deep, and it grows beyond 128 MB if your files need it. Build again after adding files. Whatever the firmware saves to the card is kept in the card image; **Show card** opens the folder that holds it.
 
-```bash
-emu/mpc2500emu --save-card card/after.img
-```
+*From source, without the chooser:* `python3 tools/mkfat16.py card/card.img 128 KIT.PGM SAMPLE1.SND SAMPLE2.SND` builds an image from the files you name (`--dir NAME` puts files into a sub-folder), `card/card.img` is inserted on the next start, `--card other.img` uses another one, and `emu/mpc2500emu --save-card card/after.img` writes the card back to a file when you quit.
 
 ### 6.2 Load a kit by hand
 `MODE` + `PAD 2` opens the Load page, pick the program or ALL file with the cursor keys and DATA wheel, and press `F6` (DO IT).
 
 ### 6.3 Load a kit automatically (AUTOLOAD)
-The stock OS loads the contents of a folder named `AUTOLOAD` in the card's root when it starts with the card inserted. You can create it exactly as on the unit: load your kit, then in the Save page (`MODE` + `PAD 3`) choose **SAVE ENTIRE MEMORY**, press `F6`, then `F2` (A.LOAD) and `F5` (DO IT). Or let a script do it:
+The stock OS loads the contents of a folder named `AUTOLOAD` in the card's root when it starts with the card inserted.
 
-```bash
-tools/make_autoload_card.sh card/in.img card/card.img firmware/your-stock-firmware.bin
-```
-The next start shows the OS loading the kit by itself:
+In the chooser: click **1 Card-files folder**, create a folder named `AUTOLOAD` inside it, put a program and its kit (the `.PGM` and its sounds) in that folder, then **2 Build card** and **Power on**. The next start shows the OS loading the kit by itself:
 
 ![AUTOLOAD in progress](docs/images/lcd_autoload_loading.png)
 
@@ -303,13 +325,14 @@ and ends with the kit selected:
 
 ![After AUTOLOAD](docs/images/lcd_autoload_done.png)
 
-### 6.4 Internal memory
-"INTERNAL MEMORY" in the Load and Save pages is the unit's internal flash, not a folder on the card. It lives inside the emulated flash chip and starts empty at every launch. Keep it with `--save-flash FILE` and start from it again with `--flash-state FILE`:
+You can also create the folder the way the unit does: load your kit, then in the Save page (`MODE` + `PAD 3`) choose **SAVE ENTIRE MEMORY**, press `F6`, then `F2` (A.LOAD). The card image keeps what you saved.
 
-```bash
-emu/mpc2500emu --save-flash state.flash          # writes the flash when you quit
-emu/mpc2500emu --flash-state state.flash         # starts from that flash instead of the firmware file
-```
+*From source:* `tools/make_autoload_card.sh card/in.img card/card.img firmware/your-stock-firmware.bin` builds a card that already contains an AUTOLOAD folder.
+
+### 6.4 Internal memory
+"INTERNAL MEMORY" in the Load and Save pages is the unit's internal flash, not a folder on the card. In the app it lives in your virtual unit, the file `unit.flash` in the *MPC2500 Emulator* folder, so what you save there is kept between runs. **Reset unit** in the chooser erases it; to keep a copy, copy `unit.flash` first.
+
+*From source:* `emu/mpc2500emu --save-flash state.flash` writes the flash when you quit and `emu/mpc2500emu --flash-state state.flash` starts from it.
 
 ## 7. Testing your own firmware
 
@@ -402,10 +425,8 @@ When you change your firmware, a failing scenario tells you which screen or soun
 ## 8. Recipes for each firmware type
 
 ### 8.1 Stock Akai OS (full `.bin` build)
-```bash
-cp MPC2500.BIN firmware/
-./run_live.sh
-```
+In the chooser select the Akai OS file (`mpc2500.bin`) and click **Flash OS**, then **Power on** whenever you start. *From source:* `cp MPC2500.BIN firmware/` then `./run_live.sh`.
+
 Boots to the main page and behaves as the unit does: loading and saving on the card, sampling engine, Q-Links, the Slider and Mixer pages.
 
 ![Mixer](docs/images/lcd_mixer.png)
@@ -419,36 +440,24 @@ For CUTOFF and RESO the pad's filter must be switched on in `PROGRAM` → `F2` (
 ![Program filter](docs/images/lcd_program_filter.png)
 
 ### 8.2 Third-party OS builds that fit the stock OS area (`.bin`)
-Same as stock: in the chooser select the file and click **Flash OS**. From source, for a quick developer check:
-```bash
-./run_live.sh --firmware firmware/custom_os.bin
-```
+Same as stock: in the chooser select the file and click **Flash OS**. It replaces the OS in your virtual unit (settings and internal memory stay). *From source:* `./run_live.sh --firmware firmware/custom_os.bin`.
+
 ![A third-party OS that fits the stock OS area](docs/images/lcd_custom_os_fits.png)
 
 ### 8.3 XL firmware (`.osx`, `.os3`)
-An XL OS image (larger than the stock OS area) is not accepted by the boot block or the stock updater. In the packaged app it is installed through an OS that has its own installer (see [section 4](#4-installing-an-extra-large-xl-os)). From source, for a quick developer check, the image can be launched directly, skipping the installer:
-```bash
-./run_live.sh --firmware firmware/xl_os.osx
-```
+An XL OS image (larger than the stock OS area) is not accepted by the boot block or the stock updater, so **Flash OS** refuses it. In the app it is installed through an OS that has its own installer (see [section 4](#4-installing-an-extra-large-xl-os)). For a quick developer check you can instead click **Developer direct load (D)** to switch it on and then **Flash OS** on the XL image: it is loaded straight into a temporary flash, skipping the installer. That is not how the hardware behaves, and nothing is kept in your virtual unit. *From source:* `./run_live.sh --firmware firmware/xl_os.osx`.
+
 ![An XL OS](docs/images/lcd_xl_os.png)
 
 The loader prints a warning such as *"this image overwrites flash sector 15 (settings) and the internal-data sectors"*. That only affects the **emulator's in-memory flash**; every new launch starts clean. It also reminds you that the stock updater cannot install such an image on a real unit.
 
 ### 8.4 OS-only `.SOS` files
-The Akai OS itself is the `.bin` file (see section 3). An `.SOS` is an OS-only payload that some build tools produce.
-These contain only the operating system. Give the emulator a full build with a valid boot block to take it from:
+The Akai OS itself is the `.bin` file (see section 3). An `.SOS` is an OS-only payload that some build tools produce. It contains only the operating system, so the emulator needs a full build with a valid boot block next to it (in the same `firmware` folder) to take the boot block from. In the chooser select the `.SOS` and click **Flash OS**; the full build in the folder is found automatically.
 
-```bash
-emu/mpc2500emu --donor firmware/mpc2500.bin firmware/MPC2500.SOS
-```
-(If a full build is in the same folder as the `.SOS` it is found automatically.)
+*From source:* `emu/mpc2500emu --donor firmware/mpc2500.bin firmware/MPC2500.SOS`.
 
 ### 8.5 Whole-flash dumps
-An 8 MiB file is treated as the entire flash chip, boot block, OS and internal memory included:
-```bash
-emu/mpc2500emu --firmware dumps/backup.bin
-```
-Use `--save-flash` to produce your own dump of the emulated state.
+An 8 MiB file is treated as the entire flash chip, boot block, OS and internal memory included. In the chooser select it and click **Flash OS**: it replaces your whole virtual unit. *From source:* `emu/mpc2500emu --firmware dumps/backup.bin`; use `--save-flash` to produce your own dump. In the app your own dump is simply the file `unit.flash`.
 
 ### 8.6 Comparing two firmware versions
 Run both through the same script and compare the outputs:
@@ -461,18 +470,39 @@ cmp out_old.bin/main_a.bin out_new.bin/main_a.bin && echo "main page identical"
 
 ## 9. Everyday tasks
 
-| I want to… | Do this |
-|---|---|
-| Switch firmware | Quit, then `./run_live.sh --firmware firmware/other-file` |
-| Start with a clean machine | Quit and start again, or `Ctrl+R` (keeps flash and card contents, clears RAM) |
-| Run faster / skip the boot | Hold `Tab` (8x) |
-| Use the 128 MB expansion instead of the stock 16 MB of RAM | `--ram 128` (the default is the stock 16 MB; any size in MB works) |
-| Change the output volume | `--audio-shift N` (default 4 = full scale; lower is louder but can clip in WAV captures) |
-| Use a different keyboard map | Edit `panel_map.txt`, or `--keymap file` |
-| See every option | `emu/mpc2500emu --help` |
-| Capture a screenshot of the LCD | Script `dump a`, then `tools/lcd2png.py` |
+| I want to… | In the app | From source |
+|---|---|---|
+| Switch or update the firmware | `Ctrl+O` (or the **Firmware / Card** button on the window's top edge) to open the chooser, select the file, **Flash OS** | Quit, then `./run_live.sh --firmware firmware/other-file` |
+| Add a firmware file | Drag it onto the chooser (or **Folders (O)** and copy it in, then `R`) | Copy it into `firmware/` |
+| Put kits and sounds on the card | **1 Card-files folder**, copy files in, **2 Build card** | `tools/mkfat16.py` (section 6.1) |
+| Start with no card, or an empty one | **Eject (E)** or **Blank card (N)** | `--card` with another image |
+| Start with a clean machine | **Reset unit (X)** in the chooser erases the unit; `Ctrl+R` power-cycles (keeps flash and card contents, clears RAM) | Quit and start again, or `Ctrl+R` |
+| Use the 128 MB expansion instead of the stock 16 MB | **RAM** button (or `M`) in the chooser | `--ram 128` |
+| Open this guide | **Quick Start (H)** in the chooser | Open `docs/MPC2500-Emulator-Quick-Start.pdf` |
+| See every key | **Cheat Sheet** button on the window's top edge (or `Ctrl+/`) | The same |
+| Run faster / skip the boot | Hold `Tab` (8x) | The same |
+| Change the output volume | The MAIN VOLUME knob on the window | `--audio-shift N` (default 4 = full scale; lower is louder but can clip in WAV captures) |
+| Use a different keyboard map | n/a | Edit `panel_map.txt`, or `--keymap file` |
+| See every option | n/a | `emu/mpc2500emu --help` |
+| Capture a screenshot of the LCD | n/a | Script `dump a`, then `tools/lcd2png.py` |
 
 ## 10. Troubleshooting
+
+Using the app:
+
+| Symptom | Cause / fix |
+|---|---|
+| Flash OS says an image is an Extra Large (XL) OS and refuses it | It does not fit the stock OS area, so it is installed through an OS with its own installer: see [section 4](#4-installing-an-extra-large-xl-os) |
+| The firmware list is empty | Drag a firmware file onto the chooser, or click **Folders (O)** and copy it in, then press `R` |
+| Power on says there is no virtual unit | Select an OS and click **Flash OS** first |
+| The card is empty in the firmware | Build the card again after adding files (**Build card**), and check the "Card:" line shows a card |
+| A kit is too big to load | Switch the memory to 128 MB with the **RAM** button |
+| macOS refuses to open the app | Right-click the app, choose **Open** (see the start of this guide) |
+| No sound | Check the computer's sound output; nothing plays until a program with a sample is loaded and a pad is hit |
+| The window stays black or has a red border | The firmware is still booting (give it a few seconds), or it crashed: start the app from a terminal to read the fault report |
+| Keys do nothing | The window must have keyboard focus; see the **Cheat Sheet** for the keys |
+
+Building and running from source:
 
 | Symptom | Cause / fix |
 |---|---|
@@ -481,15 +511,14 @@ cmp out_old.bin/main_a.bin out_new.bin/main_a.bin && echo "main page identical"
 | `no firmware found in 'firmware'` | Put a file in `firmware/` or pass `--firmware FILE` |
 | `N firmware files in 'firmware'; choose one with --firmware` | Several files are present; pass `--firmware firmware/NAME` |
 | `Cannot load firmware: ...` | The file is not an MPC2500 image the loader recognises; `emu/mpc2500emu --list` shows the detected type |
-| Window opens but stays black | The firmware is still booting (give it a few seconds), or the window has a red border: it crashed — read the fault report in the terminal |
-| No sound | Check the desktop's sound output; the emulator uses SDL's default device. Nothing plays until a program with a sample is loaded and a pad is hit |
 | Sound slightly flat or stuttering | The host is too slow for real time; close other programs or build with `make -C emu pgo` |
 | `warning: cannot read card image` | The card image path is wrong; the emulator then runs without a card |
-| Keys do nothing | The window must have keyboard focus; key names in `panel_map.txt` follow SDL names (`Left Shift`, `PageUp`, ...) |
 
 ## 11. Updating and removing
 
-Update:
+**The app:** to update, download the newer release and replace the app; your *MPC2500 Emulator* folder (firmware, card, `unit.flash`, settings) is kept. To remove everything, delete the app and that folder (see "Where the app keeps your files" near the start of this guide).
+
+**From source:**
 ```bash
 git pull
 make -C emu all hl
