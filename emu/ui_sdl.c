@@ -7,7 +7,7 @@
 // Keys: panel keys follow the keymap file; [ and ] turn the DATA wheel; Tab (held) = fast forward; Ctrl+R = power cycle; Esc = quit.
 #ifdef USE_SDL
 #include "board.h"
-#include <SDL2/SDL.h>
+#include <SDL.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>

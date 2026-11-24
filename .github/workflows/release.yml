@@ -47,8 +47,9 @@ jobs:
   macos:
     needs: skin
     strategy:
+      fail-fast: false
       matrix:
-        os: [macos-14, macos-13]          # Apple Silicon (arm64) and Intel (x86_64)
+        os: [macos-14, macos-15-intel]    # Apple Silicon (arm64) and Intel (x86_64)
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
