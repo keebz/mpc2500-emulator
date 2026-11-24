@@ -8,6 +8,8 @@ cd "$(dirname "$0")/../.."
 VERSION=${1:-dev}; ARCH=$(uname -m); NAME="MPC2500-Emulator-$VERSION-linux-$ARCH"; DIST=$PWD/dist
 PREFIX=$(packaging/build_sdl.sh "linux-$ARCH" | tail -n 1)
 [ -f skin/skin.bmp ] || python3 -I tools/make_skin.py skin
+[ -s skin/led_map.txt ] || python3 -I tools/make_skin.py skin   # older skin folders lack the LED map
+[ -s skin/led_map.txt ] || { echo "skin/led_map.txt is missing: the panel LEDs would never light"; exit 1; }
 make -C emu clean >/dev/null
 make -C emu mpc2500emu CC=gcc CFLAGS="-O2 -DAPP_VERSION=\\\"$VERSION\\\"" SDL_CF="$("$PREFIX/bin/sdl2-config" --cflags)" SDL_LD="$("$PREFIX/bin/sdl2-config" --static-libs)" 2>&1 | grep -E "error" || true
 strip emu/mpc2500emu
@@ -17,6 +19,7 @@ rm -rf "$DIST/$NAME"; mkdir -p "$DIST/$NAME/resources"
 cp emu/mpc2500emu "$DIST/$NAME/MPC2500 Emulator"
 cp -r skin "$DIST/$NAME/resources/skin"; rm -f "$DIST/$NAME/resources/skin/skin_preview.png" "$DIST/$NAME/resources/skin/overlay.png"
 cp panel_map.txt "$DIST/$NAME/resources/"
+cp docs/MPC2500-Emulator-Quick-Start.pdf "$DIST/$NAME/resources/Quick-Start-Guide.pdf"; cp docs/MPC2500-Emulator-Quick-Start.pdf "$DIST/$NAME/Quick Start Guide.pdf"
 cp packaging/icon.png "$DIST/$NAME/icon.png"; cp LICENSE THIRD-PARTY-NOTICES.md "$DIST/$NAME/"
 cat > "$DIST/$NAME/README.txt" <<'TXT'
 MPC2500 Emulator

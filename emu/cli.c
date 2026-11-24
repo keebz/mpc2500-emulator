@@ -21,7 +21,7 @@ static void usage(const char *prog) {
            "  --firmware-dir DIR  folder to search (default: firmware)\n"
            "  --donor FILE        full build to take the boot block from when running an OS-only .SOS\n"
            "  --card IMAGE        CompactFlash card image to insert (default: card/card.img if present)\n"
-           "  --ram MB            installed memory: 0 = stock 16 MB, otherwise a SODIMM of that size (default 128)\n"
+           "  --ram MB            installed memory: 0 = the stock 16 MB (default), otherwise a SODIMM of that size (e.g. 128 = the EXM128 expansion)\n"
            "  --audio-shift N     right shift from the 20-bit OS sample words to 16 bit (default 4 = the full 20-bit DAC range; smaller = louder but clips in WAV capture)\n"
            "  --list              list the firmware files found and exit\n"
            "  --headless          no window: run --steps N instructions, then print a summary\n"
@@ -40,7 +40,7 @@ static int is_number(const char *s) { if (!*s) return 0; for (; *s; s++) if (*s 
 int main(int argc, char **argv) {
     const char *fw_path = 0, *fw_dir = 0, *donor = 0, *card_path = getenv("CARD"), *skin = "skin", *keymap = "panel_map.txt", *save_flash = 0, *flash_state = 0, *save_card = 0;
     int pick = 0, flash_fw = 0, unit_on = 0, direct = 0; const char *unit_path = 0;
-    int ram_mb = getenv("SODIMM_MB") ? atoi(getenv("SODIMM_MB")) : 128, list = 0, headless = 0, want_live = 0;
+    int ram_mb = getenv("SODIMM_MB") ? atoi(getenv("SODIMM_MB")) : 0, ram_given = getenv("SODIMM_MB") != 0, list = 0, headless = 0, want_live = 0;
     enum { M_AUTO, M_EXP, M_SWEEP, M_STEPS } mode = M_AUTO;
     uint64_t steps = 5000000; const char *exp_dir = 0; uint64_t boot_steps = 300000000ull; int exp_n = 0; char **exp_specs = 0;
     if (getenv("FAULT_STRICT")) fault_strict = 1;
@@ -57,7 +57,7 @@ int main(int argc, char **argv) {
         else if (!strcmp(a, "--firmware-dir") && i + 1 < argc) fw_dir = argv[++i];
         else if (!strcmp(a, "--donor") && i + 1 < argc) donor = argv[++i];
         else if (!strcmp(a, "--card") && i + 1 < argc) card_path = argv[++i];
-        else if (!strcmp(a, "--ram") && i + 1 < argc) ram_mb = atoi(argv[++i]);
+        else if (!strcmp(a, "--ram") && i + 1 < argc) { ram_mb = atoi(argv[++i]); ram_given = 1; }
         else if (!strcmp(a, "--audio-shift") && i + 1 < argc) audio_shift = atoi(argv[++i]);
         else if (!strcmp(a, "--skin") && i + 1 < argc) skin = argv[++i];
         else if (!strcmp(a, "--keymap") && i + 1 < argc) keymap = argv[++i];
@@ -178,7 +178,7 @@ int main(int argc, char **argv) {
         printf("Firmware: %s - %s\n%s", fw.name, fw.kind, fw.report);
         if (unit_on && action == LAUNCH_FLASH) {            // like the real updater: only the OS window (sectors 1-14) is rewritten; boot block, settings and internal memory stay
             if (fw.run_in_place) {
-                snprintf(err, sizeof err, "%s cannot be installed by the boot block or by the Akai OS updater (it is not an OS build that fits the OS window), exactly as on the real unit. Install JJOS JV 3.13 first, then put this file on the card and install it from the JV 3.13 Load page.", fw.name);
+                snprintf(err, sizeof err, "%s is an OS image that does not fit the OS area the boot block and the Akai OS updater can write, so they refuse it, exactly as on the real unit. It must be installed by an OS that has its own installer (for example JJOS JV 3.13, from its Load page), and it overwrites part of the internal memory.", fw.name);
                 fprintf(stderr, "%s\n", err); fw_free(&fw);
                 if (window_mode) { need_pick = 1; fw_path = 0; pick_msg = err; donor = 0; continue; }
                 return 2;
@@ -204,6 +204,8 @@ int main(int argc, char **argv) {
         if (card_attach_file(card_path) != 0) fprintf(stderr, "warning: cannot read card image %s; running without a card\n", card_path);
         else printf("Card: %s\n", card_path);
     }
+    if (appm && !ram_given) { char rs[16]; if (app_setting_get("ram", rs, sizeof rs) && atoi(rs) > 16) ram_mb = atoi(rs); }      // the chooser's memory choice (default: the stock 16 MB)
+    if (ram_mb == 16) ram_mb = 0;                          // 16 MB is the stock memory, not a module
     if (ram_mb > 0) { ram_installed = (uint32_t)ram_mb << 20; spd_install(ram_mb); } else ram_installed = 0x01000000;
     printf("Memory: %u MB%s\n", ram_installed >> 20, ram_mb > 0 ? " (SODIMM)" : " (stock)");
     board_init();

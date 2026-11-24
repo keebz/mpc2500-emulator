@@ -11,7 +11,7 @@
 #define WIN_W 920
 #define WIN_H 700
 typedef struct { int x, y, w, h; const char *label; int id; } Btn;
-enum { B_START = 1, B_OPEN, B_NEWCARD, B_BUILD, B_CARDDIR, B_QUIT, B_RESCAN, B_FILES, B_EJECT, B_POWER, B_FLASH, B_DIRECT, B_RESET };
+enum { B_START = 1, B_OPEN, B_NEWCARD, B_BUILD, B_CARDDIR, B_QUIT, B_RESCAN, B_FILES, B_EJECT, B_POWER, B_FLASH, B_DIRECT, B_RESET, B_HELP, B_RAM };
 
 static const uint8_t lfont[96][16] = {
 #include "launcherfont.inc"
@@ -186,6 +186,7 @@ int ui_launcher(const char *fwdir, char *out_fw, size_t outn, const char *messag
     {   // start on the last firmware used
         char last[PATH_MAX + 8]; if (app_setting_get("firmware", last, sizeof last)) for (int i = 0; i < n; i++) if (!strcmp(ent[i].path, last)) sel = i;
     }
+    char ramset[16] = ""; int ram128 = app_setting_get("ram", ramset, sizeof ramset) && atoi(ramset) >= 128;
     int result = -1, direct_mode = 0, confirm_reset = 0; char unitinfo[120] = ""; const int unit_mode = app_unit_path()[0] != 0;
     while (result < 0) {
         int unit_exists = unit_mode && app_unit_info(unitinfo, sizeof unitinfo);
@@ -194,8 +195,8 @@ int ui_launcher(const char *fwdir, char *out_fw, size_t outn, const char *messag
         int do_action = 0;
         { static int fr; if (getenv("LAUNCHER_ENTER") && ++fr == 3) do_action = B_START; }
         { static int fr2; const char *acts = getenv("LAUNCHER_ACTIONS");        // test hook: one action per 4 frames, b = build card, e = eject, s = start
-          if (acts && ++fr2 % 4 == 0 && acts[fr2 / 4 - 1]) { char c = acts[fr2 / 4 - 1]; do_action = c == 'b' ? B_BUILD : c == 'e' ? B_EJECT : c == 's' ? B_START : c == 'i' ? B_FLASH : 0; } }       // test hook: press Start after a few frames
-        Btn btns[12]; int nb = 0;
+          if (acts && ++fr2 % 4 == 0 && (size_t)(fr2 / 4 - 1) < strlen(acts)) { char c = acts[fr2 / 4 - 1]; do_action = c == 'b' ? B_BUILD : c == 'e' ? B_EJECT : c == 's' ? B_START : c == 'i' ? B_FLASH : c == 'm' ? B_RAM : c == 'h' ? B_HELP : 0; } }       // test hook: press Start after a few frames
+        Btn btns[24]; int nb = 0;
         int by = WIN_H - 56, cy = 488;
         btns[nb++] = (Btn){ 36, cy, 210, 34, "1  Card-files folder (F)", B_FILES };
         btns[nb++] = (Btn){ 256, cy, 200, 34, "2  Build card (B)", B_BUILD };
@@ -208,12 +209,14 @@ int ui_launcher(const char *fwdir, char *out_fw, size_t outn, const char *messag
             btns[nb++] = (Btn){ 380, by, 244, 36, direct_mode ? "Developer direct load: ON (D)" : "Developer direct load: off (D)", B_DIRECT };
             btns[nb++] = (Btn){ 634, by, 150, 36, "Folders (O)", B_OPEN };
             btns[nb++] = (Btn){ 794, by, 102, 36, "Quit", B_QUIT };
-            btns[nb++] = (Btn){ 736, 36, 160, 24, confirm_reset ? "Press X to confirm" : "Reset unit (X)", B_RESET };
+            btns[nb++] = (Btn){ 736, 34, 160, 24, confirm_reset ? "Press X to confirm" : "Reset unit (X)", B_RESET };
         } else {
             btns[nb++] = (Btn){ 24, by, 200, 36, "Start (Enter)", B_START };
             btns[nb++] = (Btn){ 236, by, 240, 36, "Firmware folder (O)", B_OPEN };
             btns[nb++] = (Btn){ 802, by, 94, 36, "Quit", B_QUIT };
         }
+        btns[nb++] = (Btn){ 736, 6, 160, 24, "Quick Start (H)", B_HELP };
+        btns[nb++] = (Btn){ 736, 62, 160, 24, ram128 ? "RAM: 128 MB (M)" : "RAM: 16 MB (M)", B_RAM };
         while (SDL_PollEvent(&e)) {
             if (e.type == SDL_QUIT) result = 0;
             else if (e.type == SDL_KEYDOWN) {
@@ -223,7 +226,7 @@ int ui_launcher(const char *fwdir, char *out_fw, size_t outn, const char *messag
                 else if (k == SDLK_DOWN && sel + 1 < n) sel++;
                 else if (k == SDLK_RETURN || k == SDLK_KP_ENTER) do_action = B_START; else if (k == SDLK_i && unit_mode) do_action = B_FLASH; else if (k == SDLK_d && unit_mode) do_action = B_DIRECT; else if (k == SDLK_x && unit_mode) do_action = B_RESET;
                 else if (k == SDLK_o) do_action = B_OPEN; else if (k == SDLK_r) do_action = B_RESCAN;
-                else if (k == SDLK_n) do_action = B_NEWCARD; else if (k == SDLK_b) do_action = B_BUILD; else if (k == SDLK_c) do_action = B_CARDDIR; else if (k == SDLK_f) do_action = B_FILES; else if (k == SDLK_e) do_action = B_EJECT;
+                else if (k == SDLK_n) do_action = B_NEWCARD; else if (k == SDLK_b) do_action = B_BUILD; else if (k == SDLK_c) do_action = B_CARDDIR; else if (k == SDLK_f) do_action = B_FILES; else if (k == SDLK_h) do_action = B_HELP; else if (k == SDLK_m) do_action = B_RAM; else if (k == SDLK_e) do_action = B_EJECT;
             } else if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
                 int mx = e.button.x, my = e.button.y;
                 for (int i = 0; i < nb; i++) if (mx >= btns[i].x && mx < btns[i].x + btns[i].w && my >= btns[i].y && my < btns[i].y + btns[i].h) do_action = btns[i].id;
@@ -247,6 +250,7 @@ int ui_launcher(const char *fwdir, char *out_fw, size_t outn, const char *messag
                 SDL_free(f);
             }
         }
+        if (do_action && getenv("LAUNCHER_DEBUG")) fprintf(stderr, "launcher action %d unit_exists=%d sel=%d n=%d\n", do_action, unit_exists, sel, n);
         if (do_action) {
             if (do_action != B_BUILD) confirm_build = 0;
             if (do_action != B_RESET) confirm_reset = 0;
@@ -269,7 +273,7 @@ int ui_launcher(const char *fwdir, char *out_fw, size_t outn, const char *messag
             case B_FLASH:
                 if (!(n > 0 && ent[sel].ok)) { snprintf(msg, sizeof msg, n ? "That file is not a firmware image the emulator recognises." : "There is no firmware yet: drop a firmware file onto this window."); break; }
                 if (!direct_mode && !strcmp(ent[sel].kind, "test")) {
-                    snprintf(msg, sizeof msg, "%s cannot be installed by the boot block or the Akai OS updater, exactly like the real unit. Install JJOS JV 3.13 first, then put this file on the card and install it from the JV 3.13 Load page. (Developer: D loads it directly.)", ent[sel].name);
+                    snprintf(msg, sizeof msg, "%s is an OS image that does not fit the OS area the boot block and the Akai OS updater can write, so they refuse it, exactly like the real unit. It must be installed by an OS that has its own installer (for example JJOS JV 3.13, from its Load page), and it overwrites part of the internal memory. See the Quick Start. (Developer: D loads it directly.)", ent[sel].name);
                     break;
                 }
                 snprintf(out_fw, outn, "%s", ent[sel].path); app_setting_set("firmware", ent[sel].path);
@@ -282,6 +286,13 @@ int ui_launcher(const char *fwdir, char *out_fw, size_t outn, const char *messag
             }
             switch (do_action) {
             case B_OPEN: app_open_folder(fwdir); break;
+            case B_RAM: ram128 = !ram128; app_setting_set("ram", ram128 ? "128" : "16");
+                snprintf(msg, sizeof msg, ram128 ? "Memory set to 128 MB (the EXM128 expansion module). The real unit ships with 16 MB." : "Memory set to the stock 16 MB, as shipped. A kit larger than the free sample memory will not load."); break;
+            case B_HELP: { char pdf[PATH_MAX + 64]; const char *rd = app_res_dir();
+                snprintf(pdf, sizeof pdf, "%s/Quick-Start-Guide.pdf", rd ? rd : "docs"); struct stat st2;
+                if (!rd && stat(pdf, &st2) != 0) snprintf(pdf, sizeof pdf, "docs/MPC2500-Emulator-Quick-Start.pdf");
+                if (stat(pdf, &st2) == 0) app_open_folder(pdf); else snprintf(msg, sizeof msg, "The Quick Start Guide was not found (looked for %s).", pdf);
+                break; }
             case B_RESCAN: RESCAN(); snprintf(msg, sizeof msg, "Folder rescanned."); break;
             case B_CARDDIR: app_open_folder(carddir); break;
             case B_FILES: mkdir(cardfiles, 0755); app_open_folder(cardfiles); snprintf(msg, sizeof msg, "Copy your kits and sounds into the folder that just opened, then click \"2  Build card\"."); break;
@@ -307,7 +318,7 @@ int ui_launcher(const char *fwdir, char *out_fw, size_t outn, const char *messag
         ptext(ren, 24, 8, 2, lime, "MPC2500 Emulator", 0); ptext(ren, 24 + pw(2, "MPC2500 Emulator") + 12, 22, 1, dim, APP_VERSION, 0);
         if (unit_mode) {
             char ul[200]; snprintf(ul, sizeof ul, "Virtual unit: %s", unit_exists ? unitinfo : "none yet (no OS installed)"); ptext(ren, 24, 46, 3, lime, ul, 88);
-            ptext(ren, 24, 68, 1, dim, "Like the real unit: Flash OS installs an Akai OS build; XL/OS3/Light install from JV 3.13 (Load page).", 112);
+            ptext(ren, 24, 68, 1, dim, "Like the real unit: Flash OS installs an OS build that fits the stock OS area. Larger OSes need an OS with its own installer.", 112);
         } else pwrapped(ren, 24, 56, 1, dim, "Choose a firmware to run. Drop a firmware file onto this window to add it. No firmware is supplied with the emulator: use your own files.", 112);
         char line[PATH_MAX + 64]; { char tb[PATH_MAX + 8]; const char *fd = tilde(fwdir, tb, sizeof tb); size_t fl = strlen(fd); const char *tail = fl > 90 ? fd + fl - 88 : fd; snprintf(line, sizeof line, "Firmware folder: %s%s", fl > 90 ? "..." : "", tail); }
         ptext(ren, 24, 94, 1, dim, line, 112);
@@ -350,6 +361,7 @@ int ui_launcher(const char *fwdir, char *out_fw, size_t outn, const char *messag
         SDL_RenderPresent(ren);
         if (result < 0) SDL_Delay(8);
     }
+    if (getenv("LAUNCHER_DEBUG")) fprintf(stderr, "launcher returns %d action=%d fw='%s'\n", result, g_launch_action, out_fw);
     free_pfonts(); SDL_DestroyRenderer(ren); SDL_DestroyWindow(win);
     return result;
 }

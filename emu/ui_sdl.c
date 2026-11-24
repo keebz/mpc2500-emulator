@@ -237,6 +237,7 @@ int ui_run(const char *skin_dir, const char *keymap) {
     snprintf(path, sizeof path, "%s/skin_layout.txt", skin_dir);
     if (!load_skin_layout(path)) { fprintf(stderr, "no skin at %s - generate it with: python3 tools/make_skin.py %s\n", path, skin_dir); return 1; }
     snprintf(path, sizeof path, "%s/led_map.txt", skin_dir); load_led_map(path);
+    { int have = 0; for (int c = 0; c < 5; c++) for (int r = 0; r < 11; r++) if (led_bit[c][r][0] >= 0) have = 1; if (!have) fprintf(stderr, "warning: %s missing or empty: the panel LEDs will not light\n", path); }
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) != 0) { fprintf(stderr, "SDL: %s\n", SDL_GetError()); return 1; }
     int headless = getenv("SDL_VIDEODRIVER") && !strcmp(getenv("SDL_VIDEODRIVER"), "dummy");
     { SDL_AudioSpec want, have; SDL_zero(want); want.freq = 44100; want.format = AUDIO_S16SYS; want.channels = 2; want.samples = 1024; want.callback = audio_cb;

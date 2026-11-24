@@ -413,6 +413,7 @@ if __name__ == "__main__":
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     outdir = args[0] if args else "skin"
     finish(outdir)
+    import shutil; shutil.copy(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "led_map.txt"), os.path.join(outdir, "led_map.txt"))   # which OS LED bit lights which key (tracked in the repository, not generated)
     if "--overlay" in sys.argv:
         overlay(sys.argv[sys.argv.index("--overlay") + 1], outdir)
     print("wrote", outdir)

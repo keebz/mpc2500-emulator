@@ -50,10 +50,10 @@ This project models that machine, written from public documentation (the SH-3/SH
 ## Features
 - **Complete SH7727 CPU core**: the full SH-3 integer instruction set plus the SH3-DSP unit (parallel ALU/multiply/transfer instructions, X/Y memory, modulo addressing, hardware repeat loops). The integer core was checked against an independent model over all 65,536 opcodes; the DSP unit was checked against a second independent model over hundreds of thousands of random instructions (see [Accuracy and verification](#accuracy-and-verification)).
 - **Runs unmodified firmware**: stock Akai OS and the JJOS builds, from their original files (`.bin`, `.osx`, `.os3`, OS-only `.SOS` with a boot-block donor, or an 8 MB flash dump).
-- **A virtual unit that installs firmware like the real one**: the flash chip is kept in a file, the stock OS and JJOS install updates through their own Load-page updaters, and the large JJOS XL/OS3/Light images need JV 3.13 first, exactly as on the hardware. A developer direct-load mode is available for quick tests.
+- **A virtual unit that installs firmware like the real one**: the flash chip is kept in a file, the firmware's own Load-page installers decide what is accepted, and an OS larger than the stock OS area has to be installed by an OS with its own installer (JJOS JV 3.13 is the example used here), exactly as on the hardware. A developer direct-load mode is available for quick tests.
 - **Real front panel**: every button, 16 velocity-sensitive pads (mouse buttons choose the velocity), a DATA wheel (mouse wheel, drag or `[` `]`), four Q-Link controls that the firmware reads through the real ADC path, LEDs driven the way the firmware drives them, and a keyboard map for the whole panel.
 - **Audio**: the firmware's own 32-voice sample engine runs on the emulated DSP; its SIOF output is decoded to stereo and played through your sound card. Panning, filters, tuning, polyphony and stereo samples work.
-- **Storage**: a CompactFlash card image in FAT16 (including `AUTOLOAD`), a 128 MB SODIMM option (or the stock 16 MB), and an 8 MB AM29LV641DL-style flash with real command sequences, so firmware that writes flash behaves realistically.
+- **Storage**: a CompactFlash card image in FAT16 (including `AUTOLOAD`), the stock 16 MB of memory by default (a 128 MB expansion can be selected), and an 8 MB AM29LV641DL-style flash with real command sequences, so firmware that writes flash behaves realistically.
 - **Firmware-developer tooling**: fault reports (illegal instruction, wild jumps, unmapped accesses, boot-block writes), a headless mode, a scripting interface for repeatable tests, memory watchpoints, breakpoints, whole-flash save/restore and a regression suite.
 - **Packaged apps** for Linux and macOS with everything built in: a chooser window, drag-and-drop for firmware and card images, and card changes kept between sessions.
 - Built from source on Linux with SDL2 as the only dependency.
@@ -101,7 +101,7 @@ The files below boot to their user interface in the emulator. Only the firmware 
 |---|---|---|
 | Akai OS 1.24 (stock) | full build (`.bin`) | Boots, runs, loads/saves to the card, plays samples, Q-Links work |
 | JJOS "JV" 3.13 | full build (`.bin`) | Boots to its own main page (time-code display) |
-| JJOS XL 3.90 | run-in-place test image (`.osx`) | Installs from JV 3.13's Load page in the virtual unit, then boots to the XL main page; Q-Links work with its filters |
+| JJOS XL 3.90 | run-in-place test image (`.osx`) | Installs from JV 3.13's Load page in the virtual unit (it is larger than the stock OS area), then boots to the XL main page; Q-Links work with its filters |
 | JJOS Light 1.00 | run-in-place test image (`.osx`) | Boots to its welcome dialog |
 | JJOS 3 (OS3) 2.63 | run-in-place test image (`.os3`) | Boots to its welcome dialog |
 
@@ -144,14 +144,53 @@ The packaged app behaves like a real MPC2500, including the way firmware gets on
 | **Developer direct load** (D) | Developer shortcut: loads any image straight into a temporary flash and **skips the installer**. This is *not* how the hardware works; nothing is kept |
 | **Reset unit** (X) | Erases the unit (OS, settings, internal memory) |
 
-The real rules are enforced by the firmware itself, which runs unmodified:
+The real rules are enforced by the firmware itself, which runs unmodified. The chooser's **Flash OS** only accepts an OS that fits the stock OS area, exactly as the boot block and the Akai updater do. A larger OS has to go in through an OS with its own installer; see the next section for what that does to the internal memory.
 
-- The boot block and the stock Akai OS only accept OS builds that fit the OS area, and refuse the large **JJOS XL / OS3 / Light** images ("File too big"). The chooser tells you the same and does not flash them.
-- To get a JJOS XL, OS3 or Light, first install **JJOS JV 3.13**: **Flash OS** it, or copy it to the card as `MPC2500.BIN` and install it from the stock OS's **Load** page. Then put the XL, OS3 or Light file on the card with a `.OSX` name and install it from **JV 3.13's Load page** ("OS-XL update"), exactly as on the unit. Power the unit off and on and it starts the new OS.
+### Custom firmware that is larger than the stock OS area
 
-This whole chain (stock OS, then JV 3.13, then OS-XL 3.90, then a power cycle) is run in the test suite (`tests/install_chain.py`) and checked byte for byte against the firmware files. Light 1.00 and OS3 2.63 install through JV 3.13 in the same way. JV 3.13 only lists the OS3 file when it is named with a `.OSX` extension on the card.
+The unit's 8 MiB flash chip is shared by the boot block, the OS, the settings and the **internal memory**. This is the map the emulator uses (it comes from tracing the real Akai OS and boot block):
+
+| Flash address | Size | What lives there |
+|---|---|---|
+| `0x000000` - `0x00FFFF` | 64 KiB | Boot block. Never rewritten by any updater |
+| `0x010000` - `0x0EFFFF` | 14 sectors of 64 KiB (917,504 bytes) | **The OS area.** The last 16 bytes hold the OS checksum (at `0x0EFFF0`), so an OS can be at most **917,488 bytes** |
+| `0x0F0000` - `0x0FFFFF` | 1 sector | The OS's settings |
+| `0x100000` and up | to the end of the chip (`0x7FFFFF`) | **Internal memory** (sequences, songs, programs, samples). The stock OS keeps the header of its sequences-and-songs area at `0x100000` (sector 16) and the header of its programs-and-samples area at `0x2A0000` (sector 42) |
+
+**The boot block and the stock Akai OS updater only erase and write the OS area** (`0x010000` - `0x0EFFFF`). They refuse any OS image that does not fit in it (the stock OS answers "File too big: Can't execute!!"). This is how the real unit behaves, and the emulator shows it because the real firmware code is running.
+
+An OS **larger than the OS area** can still be installed, but only by an OS that contains its **own installer** and writes beyond the stock limit. It cannot be done by the stock updater. When such an installer runs, the image is laid out contiguously in flash starting at `0x010000`, and **whatever does not fit in the OS area overwrites the flash that follows it**:
+
+1. The first 917,488 bytes of the image fill the OS area.
+2. Next it **erases and overwrites the settings sector** (`0x0F0000`). The new OS then writes its own settings there.
+3. The rest of the image **erases and overwrites the internal memory, starting at its very first sector (`0x100000`) and continuing upwards, one 64 KiB sector at a time**, for as many sectors as the image needs. That includes the stock OS's sequences-and-songs header.
+
+So an oversized OS takes its extra space **out of the internal memory**. Everything stored in the overwritten sectors is destroyed, the start of the internal memory is no longer a valid stock layout, and the unit's own warning says so ("All memory contents will be lost!!"). Sectors beyond the end of the image are not erased by the installer, but with the header at `0x100000` gone they are no longer reachable by the stock OS.
+
+Measured on the emulated unit with firmware that does this (JJOS is the example here; the procedure is not specific to JJOS):
+
+| Image | Size | Flash it occupies | Beyond the OS area | Internal-memory sectors overwritten |
+|---|---|---|---|---|
+| Akai OS 1.24 (stock) | 784,916 B | `0x010000` - `0x0BFA13` | none | none |
+| JJOS JV 3.13 | 894,040 B | `0x010000` - `0x0DA457` | none (fits) | none |
+| JJOS Light 1.00 | 1,175,052 B | `0x010000` - `0x11EE0B` | 192,028 B | sectors 16-17 (`0x100000` - `0x11FFFF`, 128 KiB) |
+| JJOS OS3 2.63 | 1,331,048 B | `0x010000` - `0x144F67` | 348,024 B | sectors 16-20 (`0x100000` - `0x14FFFF`, 320 KiB) |
+| JJOS XL 3.90 | 1,503,360 B | `0x010000` - `0x16F07F` | 520,336 B | sectors 16-22 (`0x100000` - `0x16FFFF`, 448 KiB) |
+
+For XL 3.90 the installer was traced in detail: it erased 23 consecutive sectors, `0x010000` - `0x17FFFF` (the OS area, the settings sector and 8 internal-memory sectors), and programmed `0x010000` - `0x16F07F` plus its settings. The table lists the sectors that receive image data; an installer may erase more than it writes.
+
+**Going back to the stock OS.** Once the start of the internal memory has been overwritten, the stock OS no longer finds valid internal-memory headers. The recovery reported for the real unit is: run a "clear internal" OS once (it erases the two header sectors), install the normal Akai OS, then restore your internal data by loading your INTERNAL folder from the card and saving it to INTERNAL MEMORY. No such tool is included here.
+
+**The procedure, for any such firmware.** (1) Put an OS with its own installer on the unit (JJOS JV 3.13 is one: it fits the OS area, so the stock updater accepts it). (2) Put the oversized image on the card. (3) Install it from that OS's Load page. (4) Power cycle. In the emulator's virtual unit this runs the real installer code: with JJOS the file must be named with a `.OSX` extension on the card (JV 3.13 does not list an OS3 file named `.OS3`), and you press `F6` (DO IT) on the Load page, then `F5` (DO IT) in the update dialog. This sequence is covered by the automated test `tests/install_chain.py` and compared byte for byte with the firmware files.
+
+*How the real unit behaves after such an install, beyond what the firmware itself shows, has not been verified on hardware.*
 
 **Safety.** Nothing here changes what you must do on real hardware: a firmware that installs and runs in the emulator is still not proven to be safe on a real unit (see the disclaimer at the top).
+
+## Memory and card size
+
+- **Memory (RAM):** the emulated unit starts with the **stock 16 MB** of memory, as shipped. To emulate the optional 128 MB expansion (EXM128), click **RAM: 16 MB** in the chooser (or press `M`) to switch it to 128 MB, or pass `--ram 128` on the command line. A kit that is larger than the free sample memory will not load with the stock 16 MB, just as on a real unit.
+- **Card size:** the card image is a separate file (a virtual CompactFlash card) and has nothing to do with the unit's memory. The 128 MB that you see is only the default size the emulator gives a new card; **Build card** makes it larger when your files need more. The unit's memory is never stored on the card.
 
 ## Where the app keeps your files (and how to uninstall)
 
