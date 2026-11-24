@@ -5,7 +5,7 @@ The MPC2500 Emulator source code is MIT licensed (see `LICENSE`). The packaged a
 | Component | Used for | Licence |
 |---|---|---|
 | **SDL2** (https://libsdl.org), statically linked into the packaged Linux and macOS applications | Window, input and audio output | zlib licence (https://www.libsdl.org/license.php) |
-| **Liberation fonts** (Liberation Sans / Liberation Mono) | Rendered into the panel artwork (`tools/make_skin.py`), the launcher font (`emu/launcherfont.inc`) and the documentation images/PDF | SIL Open Font License 1.1 (https://github.com/liberationfonts/liberation-fonts) |
+| **Liberation fonts** (Liberation Sans / Liberation Mono) | Rendered into the panel artwork (`tools/make_skin.py`), the chooser and notice fonts (`emu/launcherfont.inc`, `emu/launcherfont_sans.inc`) and the documentation images/PDF | SIL Open Font License 1.1 (https://github.com/liberationfonts/liberation-fonts) |
 | **Pillow** (build-time only) | Artwork and documentation image generation | HPND licence |
 
 ## Not included

@@ -9,6 +9,7 @@
 //          --list  --live  --headless  --skin DIR  --keymap FILE  --fault-strict  --save-flash FILE  --flash-state FILE  --help
 // environment (kept for scripts): CARD, SODIMM_MB, FAULT_STRICT, IRQ_DIV, HANG_SAMPLES
 #include "board.h"
+#include <sys/stat.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -38,7 +39,7 @@ static int is_number(const char *s) { if (!*s) return 0; for (; *s; s++) if (*s 
 
 int main(int argc, char **argv) {
     const char *fw_path = 0, *fw_dir = 0, *donor = 0, *card_path = getenv("CARD"), *skin = "skin", *keymap = "panel_map.txt", *save_flash = 0, *flash_state = 0, *save_card = 0;
-    int pick = 0;
+    int pick = 0, flash_fw = 0, unit_on = 0, direct = 0; const char *unit_path = 0;
     int ram_mb = getenv("SODIMM_MB") ? atoi(getenv("SODIMM_MB")) : 128, list = 0, headless = 0, want_live = 0;
     enum { M_AUTO, M_EXP, M_SWEEP, M_STEPS } mode = M_AUTO;
     uint64_t steps = 5000000; const char *exp_dir = 0; uint64_t boot_steps = 300000000ull; int exp_n = 0; char **exp_specs = 0;
@@ -49,7 +50,10 @@ int main(int argc, char **argv) {
     for (int i = 1; i < argc; i++) {
         const char *a = argv[i];
         if (!strcmp(a, "--help") || !strcmp(a, "-h")) { usage(argv[0]); return 0; }
-        else if (!strcmp(a, "--firmware") && i + 1 < argc) fw_path = argv[++i];
+        else if (!strcmp(a, "--firmware") && i + 1 < argc) fw_path = argv[++i];                 // direct load (developer shortcut: bypasses the installer)
+        else if (!strcmp(a, "--flash") && i + 1 < argc) { fw_path = argv[++i]; flash_fw = 1; }    // write this OS to the virtual unit like the updater does
+        else if (!strcmp(a, "--unit") && i + 1 < argc) { unit_path = argv[++i]; unit_on = 1; }    // keep the flash chip in this file (virtual unit)
+        else if (!strcmp(a, "--direct")) direct = 1;
         else if (!strcmp(a, "--firmware-dir") && i + 1 < argc) fw_dir = argv[++i];
         else if (!strcmp(a, "--donor") && i + 1 < argc) donor = argv[++i];
         else if (!strcmp(a, "--card") && i + 1 < argc) card_path = argv[++i];
@@ -99,6 +103,9 @@ int main(int argc, char **argv) {
             else if (!(app_setting_get("card", saved, sizeof saved) && !strcmp(saved, "none"))) { snprintf(card_buf, sizeof card_buf, "%s/card/card.img", ud); if ((t = fopen(card_buf, "rb"))) { fclose(t); card_path = strdup(card_buf); } }
         }
     }
+    if (appm && !direct && !flash_state && !unit_on) { static char up[800]; snprintf(up, sizeof up, "%s/unit.flash", app_user_dir()); unit_path = up; unit_on = 1; }
+    if (direct || flash_state) unit_on = 0;
+    if (unit_on && unit_path) app_unit_set(unit_path);
     if (!fw_dir) fw_dir = "firmware";
     g_fw_dir = fw_dir;
     if (0 && !fw_path && !flash_state && window_mode && !pick && appm) {   // (disabled) the chooser is now always shown, so the card options stay reachable
@@ -110,8 +117,11 @@ int main(int argc, char **argv) {
 #ifndef USE_SDL
     need_pick = 0;
 #endif
+    int action = LAUNCH_DIRECT;                      // what to do with the flash: power on the virtual unit / write an OS to it / load an image directly
+    if (unit_on) action = flash_fw ? LAUNCH_FLASH : fw_path ? LAUNCH_DIRECT : LAUNCH_POWER;
+    if (unit_on && action == LAUNCH_POWER && window_mode) need_pick = 1;
     for (;;) {                                                                    // choose and load the firmware; in a window build a failure returns to the chooser
-    if (!fw_path && !flash_state && !need_pick) {
+    if (!fw_path && !flash_state && !need_pick && !(unit_on && action == LAUNCH_POWER)) {
         FwEntry list_e[64]; int n = fw_scan_folder(fw_dir, list_e, 64);
         if (n < 0 && !window_mode) { fprintf(stderr, "firmware folder '%s' not found.\nCreate it and put your firmware file in it, or pass --firmware FILE.\n", fw_dir); return 2; }
         int ok = 0, pick_i = -1;
@@ -135,14 +145,26 @@ int main(int argc, char **argv) {
     }
 #ifdef USE_SDL
     if (need_pick) {
+        g_launch_action = LAUNCH_DIRECT;
         if (!ui_launcher(fw_dir, path_buf, sizeof path_buf, pick_msg)) return 0;
-        fw_path = path_buf; need_pick = 0; pick_msg = 0;
+        action = unit_on ? g_launch_action : LAUNCH_DIRECT;
+        fw_path = action == LAUNCH_POWER ? 0 : path_buf; need_pick = 0; pick_msg = 0;
     }
 #endif
     if (list) { FwEntry le[64]; int n = fw_scan_folder(fw_dir, le, 64); printf("firmware folder: %s\n", fw_dir); for (int i = 0; i < n; i++) printf("  %-34s %9ld bytes  %-12s %s\n", le[i].name, le[i].size, le[i].kind, le[i].note); return 0; }
 
     Firmware fw; char donor_buf[600];
-    if (flash_state) {
+    if (unit_on && action == LAUNCH_POWER) {
+        if (flash_load_state(unit_path) != 0) {
+            snprintf(err, sizeof err, "There is no virtual unit yet. Select an Akai OS build in the list and use \"Flash OS\" to create it.");
+            fprintf(stderr, "%s\n", err);
+            if (window_mode) { need_pick = 1; fw_path = 0; pick_msg = err; continue; }
+            return 2;
+        }
+        app_unit_active(1);
+        printf("Virtual unit: %s\n", unit_path);
+        break;
+    } else if (flash_state) {
         if (flash_load_state(flash_state) != 0) { fprintf(stderr, "cannot load flash state %s\n", flash_state); return 2; }
         printf("Flash state: %s\n", flash_state);
         break;
@@ -154,7 +176,19 @@ int main(int argc, char **argv) {
             return 2;
         }
         printf("Firmware: %s - %s\n%s", fw.name, fw.kind, fw.report);
-        if (flash_attach(fw.flash_image, fw.flash_len) != 0) { fprintf(stderr, "cannot place the firmware in the flash device\n"); return 2; }
+        if (unit_on && action == LAUNCH_FLASH) {            // like the real updater: only the OS window (sectors 1-14) is rewritten; boot block, settings and internal memory stay
+            if (fw.run_in_place) {
+                snprintf(err, sizeof err, "%s cannot be installed by the boot block or by the Akai OS updater (it is not an OS build that fits the OS window), exactly as on the real unit. Install JJOS JV 3.13 first, then put this file on the card and install it from the JV 3.13 Load page.", fw.name);
+                fprintf(stderr, "%s\n", err); fw_free(&fw);
+                if (window_mode) { need_pick = 1; fw_path = 0; pick_msg = err; donor = 0; continue; }
+                return 2;
+            }
+            struct stat ust;
+            if (fw.big || stat(unit_path, &ust) != 0 || flash_load_state(unit_path) != 0) { if (flash_attach(fw.flash_image, fw.flash_len) != 0) { fprintf(stderr, "cannot place the firmware in the flash device\n"); return 2; } }
+            else { memcpy(flash_data + 0x10000, fw.flash_image + 0x10000, 0xE0000); flash_reset_state(); }
+            app_unit_active(1); if (app_unit_save() != 0) fprintf(stderr, "could not write the virtual unit %s\n", unit_path);
+            printf("Virtual unit: OS written to %s\n", unit_path);
+        } else if (flash_attach(fw.flash_image, fw.flash_len) != 0) { fprintf(stderr, "cannot place the firmware in the flash device\n"); return 2; }
         fw_free(&fw);
         break;
     }
@@ -191,6 +225,7 @@ int main(int argc, char **argv) {
         fprintf(stderr, "this build has no window support (built without SDL2); use --headless/--steps/--exp, or rebuild with SDL2\n"); rc = 2;
 #endif
     }
+    app_unit_save();                                                              // the virtual unit keeps the flash (installed OS, settings, internal memory)
     if (appm && card_dirty && card_path && !save_card) { if (card_save(card_path) != 0) fprintf(stderr, "could not write the card image %s\n", card_path); }   // a real card keeps what was saved to it
     if (save_card) { if (card_save(save_card) == 0) printf("Card saved to %s\n", save_card); else fprintf(stderr, "could not write %s\n", save_card); }
     if (save_flash) { if (flash_save(save_flash) == 0) printf("Flash saved to %s\n", save_flash); else fprintf(stderr, "could not write %s\n", save_flash); }

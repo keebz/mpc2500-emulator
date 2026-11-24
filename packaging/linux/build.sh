@@ -27,7 +27,8 @@ the folder's "firmware" sub-folder), pick it in the list and press Enter.
 
 No firmware is included - you need your own MPC2500 firmware files.
 This software is provided "as is", without warranty of any kind. It is unofficial and not affiliated with Akai Professional.
-The emulator keeps your files (firmware, card, settings) in the folder "MPC2500 Emulator" in your home folder. Deleting the app does not delete it.
+The emulator keeps your files (firmware, card, your virtual unit unit.flash, settings) in the folder "MPC2500 Emulator" in your home folder. Deleting the app does not delete it.
+Like the real unit, firmware is installed: use Flash OS in the chooser (start with the stock Akai OS), then Power on. See README.md.
 EXPERIMENTAL SOFTWARE: a notice must be accepted every time the emulator starts. Testing a firmware here gives no guarantee it will work on real hardware,
 and installing firmware on a real unit can damage it beyond repair. See README.md for the full text.
 TXT

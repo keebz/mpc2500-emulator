@@ -29,6 +29,7 @@ It runs the stock Akai OS and third-party operating systems (JJOS family) unmodi
 - [Screenshots](#screenshots)
 - [What is emulated, and what is not](#what-is-emulated-and-what-is-not)
 - [Firmware compatibility](#firmware-compatibility)
+- [The virtual unit](#the-virtual-unit-installing-firmware-like-the-real-hardware)
 - [Download and run](#download-and-run-no-terminal-nothing-to-install)
 - [Quick start (from source)](#quick-start-from-source)
 - [Using the front panel](#using-the-front-panel)
@@ -48,7 +49,8 @@ This project models that machine, written from public documentation (the SH-3/SH
 
 ## Features
 - **Complete SH7727 CPU core**: the full SH-3 integer instruction set plus the SH3-DSP unit (parallel ALU/multiply/transfer instructions, X/Y memory, modulo addressing, hardware repeat loops). The integer core was checked against an independent model over all 65,536 opcodes; the DSP unit was checked against a second independent model over hundreds of thousands of random instructions (see [Accuracy and verification](#accuracy-and-verification)).
-- **Runs unmodified firmware**: stock Akai OS and the JJOS builds load directly from their original files (`.bin`, `.osx`, `.os3`, OS-only `.SOS` with a boot-block donor, or an 8 MB flash dump).
+- **Runs unmodified firmware**: stock Akai OS and the JJOS builds, from their original files (`.bin`, `.osx`, `.os3`, OS-only `.SOS` with a boot-block donor, or an 8 MB flash dump).
+- **A virtual unit that installs firmware like the real one**: the flash chip is kept in a file, the stock OS and JJOS install updates through their own Load-page updaters, and the large JJOS XL/OS3/Light images need JV 3.13 first, exactly as on the hardware. A developer direct-load mode is available for quick tests.
 - **Real front panel**: every button, 16 velocity-sensitive pads (mouse buttons choose the velocity), a DATA wheel (mouse wheel, drag or `[` `]`), four Q-Link controls that the firmware reads through the real ADC path, LEDs driven the way the firmware drives them, and a keyboard map for the whole panel.
 - **Audio**: the firmware's own 32-voice sample engine runs on the emulated DSP; its SIOF output is decoded to stereo and played through your sound card. Panning, filters, tuning, polyphony and stereo samples work.
 - **Storage**: a CompactFlash card image in FAT16 (including `AUTOLOAD`), a 128 MB SODIMM option (or the stock 16 MB), and an 8 MB AM29LV641DL-style flash with real command sequences, so firmware that writes flash behaves realistically.
@@ -99,7 +101,7 @@ The files below boot to their user interface in the emulator. Only the firmware 
 |---|---|---|
 | Akai OS 1.24 (stock) | full build (`.bin`) | Boots, runs, loads/saves to the card, plays samples, Q-Links work |
 | JJOS "JV" 3.13 | full build (`.bin`) | Boots to its own main page (time-code display) |
-| JJOS XL 3.90 | run-in-place test image (`.osx`) | Boots to the XL main page; Q-Links work with its filters |
+| JJOS XL 3.90 | run-in-place test image (`.osx`) | Installs from JV 3.13's Load page in the virtual unit, then boots to the XL main page; Q-Links work with its filters |
 | JJOS Light 1.00 | run-in-place test image (`.osx`) | Boots to its welcome dialog |
 | JJOS 3 (OS3) 2.63 | run-in-place test image (`.os3`) | Boots to its welcome dialog |
 
@@ -122,12 +124,34 @@ Ready-to-run applications for Linux and macOS are attached to each release on th
 | **macOS, Apple Silicon** (M1 and later) | `MPC2500-Emulator-<version>-macOS-arm64.zip` (or `.dmg`) | Open it, drag **MPC2500 Emulator** to *Applications*, then right-click > *Open* the first time |
 | **macOS, Intel** | `MPC2500-Emulator-<version>-macOS-x86_64.zip` (or `.dmg`) | Same as above |
 
-On the first start the app creates a folder called **MPC2500 Emulator** in your home folder and shows a chooser. **Drag your firmware file onto the window**, pick it in the list and press Enter. The chooser also lets you add a CompactFlash card image (drop a `.img` file), create a blank card, or build a card from a folder of files, all with the mouse:
+On the first start the app creates a folder called **MPC2500 Emulator** in your home folder and shows a chooser. **Drag your firmware file onto the window** (start with the stock Akai OS), pick it in the list and click **Flash OS**: that creates your virtual unit and starts it. The chooser also lets you add a CompactFlash card image (drop a `.img` file), create a blank card, or build a card from a folder of files, all with the mouse:
 
 <p align="center"><img src="docs/images/launcher.png" alt="The firmware chooser" width="640"></p>
 
-Next time the chooser appears again with your last firmware selected: press Enter. To get kits and sounds into the emulator, use the card panel in the chooser (**1 Card-files folder**, copy your files in, **2 Build card**, then Start). While it runs: drop another firmware or card file on the window to switch, `Ctrl+O` returns to the chooser, and what the firmware saves to the card is kept. macOS shows a one-time security prompt because the app is not notarised by Apple (see [packaging/README.md](packaging/README.md#notes)). To build the applications yourself see [packaging/README.md](packaging/README.md).
+Next time the chooser appears again: press Enter (**Power on**) to start the unit as you left it. To get kits and sounds into the emulator, use the card panel in the chooser (**1 Card-files folder**, copy your files in, **2 Build card**, then Power on). While it runs: drop another firmware or card file on the window to switch, `Ctrl+O` returns to the chooser, and what the firmware saves to the card is kept. macOS shows a one-time security prompt because the app is not notarised by Apple (see [packaging/README.md](packaging/README.md#notes)). To build the applications yourself see [packaging/README.md](packaging/README.md).
 
+
+## The virtual unit: installing firmware like the real hardware
+
+The packaged app behaves like a real MPC2500, including the way firmware gets onto it. The emulator keeps the contents of the unit's flash chip (boot block, installed OS, settings and the **internal memory**) in a file, `unit.flash`, in your **MPC2500 Emulator** folder. Whatever is installed stays installed between runs.
+
+<p align="center"><img src="docs/images/launcher.png" alt="The chooser with the virtual unit" width="640"></p>
+
+| Chooser button | What it does |
+|---|---|
+| **Power on** (Enter) | Starts the unit with whatever OS is installed in it |
+| **Flash OS** (I) | Writes the selected OS build to the unit like the Akai updater: only the OS area is rewritten; settings and internal memory stay. Use it to create the unit the first time (pick the stock Akai OS) |
+| **Developer direct load** (D) | Developer shortcut: loads any image straight into a temporary flash and **skips the installer**. This is *not* how the hardware works; nothing is kept |
+| **Reset unit** (X) | Erases the unit (OS, settings, internal memory) |
+
+The real rules are enforced by the firmware itself, which runs unmodified:
+
+- The boot block and the stock Akai OS only accept OS builds that fit the OS area, and refuse the large **JJOS XL / OS3 / Light** images ("File too big"). The chooser tells you the same and does not flash them.
+- To get a JJOS XL, OS3 or Light, first install **JJOS JV 3.13**: **Flash OS** it, or copy it to the card as `MPC2500.BIN` and install it from the stock OS's **Load** page. Then put the XL, OS3 or Light file on the card with a `.OSX` name and install it from **JV 3.13's Load page** ("OS-XL update"), exactly as on the unit. Power the unit off and on and it starts the new OS.
+
+This whole chain (stock OS, then JV 3.13, then OS-XL 3.90, then a power cycle) is run in the test suite (`tests/install_chain.py`) and checked byte for byte against the firmware files. Light 1.00 and OS3 2.63 install through JV 3.13 in the same way. JV 3.13 only lists the OS3 file when it is named with a `.OSX` extension on the card.
+
+**Safety.** Nothing here changes what you must do on real hardware: a firmware that installs and runs in the emulator is still not proven to be safe on a real unit (see the disclaimer at the top).
 
 ## Where the app keeps your files (and how to uninstall)
 
@@ -138,9 +162,10 @@ The first time the packaged app starts it creates a folder called **MPC2500 Emul
 | `firmware/` | the firmware files you added |
 | `card-files/` | the kits and sounds you want on the card (you fill this) |
 | `card/` | the card image the emulator uses (`card.img`, and `card.img.bak` after a rebuild) |
+| `unit.flash` | your **virtual unit**: the flash chip with the installed OS, settings and internal memory (8 MB) |
 | `settings.txt` | the app's remembered choices (last firmware, card) |
 
-**Deleting the app does not delete this folder**, and the folder is never removed automatically. To uninstall completely, delete the app *and* the `MPC2500 Emulator` folder. Copy out anything you want to keep first, such as the card image or your own firmware files. To make the app forget your choices without deleting your files, delete only `settings.txt`. Setting the environment variable `MPC2500_HOME` makes the app use a different folder.
+**Deleting the app does not delete this folder**, and the folder is never removed automatically. To uninstall completely, delete the app *and* the `MPC2500 Emulator` folder. Copy out anything you want to keep first, such as the card image, `unit.flash` (it holds your internal memory) or your own firmware files. To make the app forget your choices without deleting your files, delete only `settings.txt`. Setting the environment variable `MPC2500_HOME` makes the app use a different folder.
 
 ## Quick start (from source)
 
@@ -218,7 +243,7 @@ NOTES.md    engineering notes: what was learned about the hardware and how
 - Output level of the audio is not calibrated against the real DAC (`--audio-shift`).
 - The flash chip's ID codes could not be verified against a datasheet (no shipped firmware reads them).
 - Instruction timing is an average, not cycle accurate: busy-wait loops, or firmware that depends on exact bus timing, can behave differently from the unit.
-- Several JJOS flows (such as installing an OS through the boot updater) have not been exercised end to end.
+- Installing through the firmware's own Load-page updaters is verified (stock OS to JV 3.13 to XL, Light and OS3). Not covered: the boot-block recovery updater (`MPC2500.SOS`, used when no valid OS is present) from the chooser, power loss in the middle of an install, and any firmware or installer other than the ones above.
 
 ## Documentation
 - **[QUICKSTART.md](QUICKSTART.md)** — installation and a walk-through for each firmware type.

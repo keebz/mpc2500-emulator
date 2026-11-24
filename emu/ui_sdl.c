@@ -185,6 +185,7 @@ static int in_rect(const SDL_Rect *r, int x, int y) { return x >= r->x && x < r-
 
 // ---------------------------------------------------------------- toolbar and cheat sheet
 void ui_draw_text(SDL_Renderer *r, int x, int y, int scale, SDL_Color c, const char *s);        // launcher.c
+int ui_text_width(int scale, const char *s);
 static int show_help;
 static SDL_Rect tb_help = { 826, 27, 104, 20 }, tb_fw = { 938, 27, 136, 20 };                      // buttons on the top bezel, in panel units
 static void draw_toolbar(SDL_Renderer *ren, int hx, int hy) {
@@ -194,33 +195,40 @@ static void draw_toolbar(SDL_Renderer *ren, int hx, int hy) {
         int hot = in_rect(&b[i].r, hx, hy);
         SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND); SDL_SetRenderDrawColor(ren, hot ? 90 : 52, hot ? 100 : 56, hot ? 60 : 64, 235); SDL_RenderFillRect(ren, &b[i].r);
         SDL_SetRenderDrawColor(ren, 110, 116, 128, 255); SDL_RenderDrawRect(ren, &b[i].r);
-        ui_draw_text(ren, b[i].r.x + (b[i].r.w - (int)strlen(b[i].l) * 8) / 2, b[i].r.y + 2, 1, fg, b[i].l);
+        ui_draw_text(ren, b[i].r.x + (b[i].r.w - ui_text_width(1, b[i].l)) / 2, b[i].r.y, 1, fg, b[i].l);
     }
 }
 static void draw_cheatsheet(SDL_Renderer *ren, int W, int H) {
-    char items[220][52]; int n = 0;
-    #define ADD(...) do { if (n < 220) snprintf(items[n++], 52, __VA_ARGS__); } while (0)
-    ADD("#PANEL KEYS");
-    for (int i = 0; i < nbinds; i++) { const char *kn = SDL_GetKeyName(binds[i].key); const char *lab = cell_label[binds[i].col][binds[i].row]; ADD("%-12.12s %.30s", *kn ? kn : "?", lab); }
-    ADD(""); ADD("#PAD KEYS (pad 1 = bottom left)");
-    for (int i = 0; i < npadbinds; i++) { const char *kn = SDL_GetKeyName(padbinds[i].key); ADD("%-12.12s PAD %d", *kn ? kn : "?", padbinds[i].col); }
-    ADD(""); ADD("#EMULATOR");
-    ADD("%-12s DATA wheel - / +", "[  ]"); ADD("%-12s fast-forward (hold)", "Tab"); ADD("%-12s power cycle", "Ctrl/Cmd+R"); ADD("%-12s firmware / card chooser", "Ctrl/Cmd+O");
-    ADD("%-12s this cheat sheet", "Ctrl/Cmd+/"); ADD("%-12s close sheet / quit", "Esc");
-    ADD(""); ADD("#MOUSE");
-    ADD("Click a button: press it (held while down)"); ADD("Click a pad: hit (right = soft, middle = hard)"); ADD("Wheel / drag the jog wheel: DATA wheel");
-    ADD("Drag the knobs and sliders: Q-Links, volume"); ADD("Drop a firmware or .img file: switch to it");
-    #undef ADD
+    struct { char key[44], lab[44]; int head; } it[240]; int n = 0;
+    #define HEAD(t) do { if (n < 240) { snprintf(it[n].key, 44, "%s", t); it[n].lab[0] = 0; it[n++].head = 1; } } while (0)
+    #define KEY(k, l) do { if (n < 240) { snprintf(it[n].key, 44, "%s", k); snprintf(it[n].lab, 44, "%s", l); it[n++].head = 0; } } while (0)
+    #define GAP() do { if (n < 240) { it[n].key[0] = it[n].lab[0] = 0; it[n++].head = 0; } } while (0)
+    HEAD("Panel keys");
+    for (int i = 0; i < nbinds; i++) { const char *kn = SDL_GetKeyName(binds[i].key); KEY(*kn ? kn : "?", cell_label[binds[i].col][binds[i].row]); }
+    GAP(); HEAD("Pad keys (pad 1 = bottom left)");
+    for (int i = 0; i < npadbinds; i++) { const char *kn = SDL_GetKeyName(padbinds[i].key); char l[16]; snprintf(l, sizeof l, "PAD %d", padbinds[i].col); KEY(*kn ? kn : "?", l); }
+    GAP(); HEAD("Emulator");
+    KEY("[  ]", "DATA wheel - / +"); KEY("Tab", "fast-forward (hold)"); KEY("Ctrl/Cmd+R", "power cycle"); KEY("Ctrl/Cmd+O", "firmware / card chooser");
+    KEY("Ctrl/Cmd+/", "this cheat sheet"); KEY("Esc", "close sheet / quit");
+    GAP(); HEAD("Mouse");
+    KEY("Click button", "press it (held while down)"); KEY("Click pad", "hit (right = soft, middle = hard)"); KEY("Wheel / jog", "DATA wheel");
+    KEY("Drag knobs", "Q-Links, volume"); KEY("Drop a file", "firmware or .img: switch to it");
+    #undef HEAD
+    #undef KEY
+    #undef GAP
     SDL_Rect all = { 0, 0, W, H }; SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND); SDL_SetRenderDrawColor(ren, 10, 11, 14, 247); SDL_RenderFillRect(ren, &all);
-    SDL_Color head = { 170, 200, 68, 255 }, white = { 235, 235, 240, 255 }, dim = { 150, 155, 165, 255 };
-    ui_draw_text(ren, 40, 24, 2, head, "KEY BINDINGS");
-    int per = (H - 130) / 18, colw = (W - 80) / 3, col = 0, row = 0;
+    SDL_Color head = { 170, 200, 68, 255 }, white = { 235, 235, 240, 255 }, key = { 255, 215, 110, 255 }, dim = { 150, 155, 165, 255 };
+    ui_draw_text(ren, 40, 18, 2, head, "Key bindings");
+    int per = (H - 120) / 22, colw = (W - 80) / 3, col = 0, row = 0;
     for (int i = 0; i < n; i++) {
         if (row >= per) { row = 0; col++; } if (col > 2) break;
-        if (row == 0 && !items[i][0]) continue;                       // no blank line at the top of a column
-        ui_draw_text(ren, 40 + col * colw, 76 + row * 18, 1, items[i][0] == '#' ? head : white, items[i][0] == '#' ? items[i] + 1 : items[i]); row++;
+        if (row == 0 && !it[i].key[0]) continue;                       // no blank line at the top of a column
+        int x = 40 + col * colw, y = 66 + row * 22;
+        if (it[i].head) ui_draw_text(ren, x, y + 4, 3, head, it[i].key);
+        else if (it[i].key[0]) { ui_draw_text(ren, x, y, 1, key, it[i].key); ui_draw_text(ren, x + 112, y, 1, white, it[i].lab); }
+        row++;
     }
-    ui_draw_text(ren, 40, H - 40, 1, dim, "Keys come from panel_map.txt. Press Esc or click anywhere to close.");
+    ui_draw_text(ren, 40, H - 34, 1, dim, "Keys come from panel_map.txt. Press Esc or click anywhere to close.");
 }
 
 int ui_run(const char *skin_dir, const char *keymap) {
@@ -279,6 +287,8 @@ int ui_run(const char *skin_dir, const char *keymap) {
         }
         if (getenv("LIVE_DROP") && (int)frames == atoi(getenv("LIVE_DROP"))) { SDL_Event de; memset(&de, 0, sizeof de); de.type = SDL_DROPFILE; de.drop.file = SDL_strdup(strchr(getenv("LIVE_DROP"), ':') + 1); SDL_PushEvent(&de); }   // test hook: "frame:/path"
         au_volume = mainvol_v;
+        { static uint64_t seen = ~0ull; static unsigned quiet; uint64_t cnt = flash_programs + flash_erases;       // virtual unit: save the flash a few seconds after it last changed (an OS install, settings, internal memory)
+          if (seen == ~0ull) seen = cnt; if (cnt != seen) { seen = cnt; quiet = 0; } else if (quiet < 1000000) { if (++quiet == 240) app_unit_save(); } }
         if (getenv("LIVE_QSET")) {                       // test hook: "frame:Qn:value;..." moves a Q-Link control at a given frame
             const char *q = getenv("LIVE_QSET");
             while (*q) { int fr, qi, val; if (sscanf(q, "%d:%d:%d", &fr, &qi, &val) == 3 && (uint64_t)fr == frames && qi >= 1 && qi <= 6) { if (qi <= 4) qv[qi] = val; else if (qi == 5) mainvol_v = val; else recgain_v = val; } const char *nx = strchr(q, ';'); if (!nx) break; q = nx + 1; }
@@ -308,7 +318,7 @@ int ui_run(const char *skin_dir, const char *keymap) {
                     if (!strcmp(f, dst) || app_copy_file(f, dst) == 0) { app_setting_set("card", dst); emu_alive = 0; SDL_UnlockMutex(emu_lock); app_restart(0, dst, 0); SDL_LockMutex(emu_lock); }
                 } else {
                     snprintf(dst, sizeof dst, "%s/%s", g_fw_dir, bn);
-                    if (!strcmp(f, dst) || app_copy_file(f, dst) == 0) { app_setting_set("firmware", dst); emu_alive = 0; SDL_UnlockMutex(emu_lock); app_restart(dst, 0, 0); SDL_LockMutex(emu_lock); }
+                    if (!strcmp(f, dst) || app_copy_file(f, dst) == 0) { app_setting_set("firmware", dst); emu_alive = 0; SDL_UnlockMutex(emu_lock); if (app_unit_path()[0]) app_restart(0, 0, 1); else app_restart(dst, 0, 0); SDL_LockMutex(emu_lock); }   // virtual unit: the chooser decides how to install it
                 }
                 SDL_free(f);
             } else if (e.type == SDL_MOUSEWHEEL) { if (e.wheel.y) wheel_turn(e.wheel.y > 0 ? abs(e.wheel.y) : -abs(e.wheel.y)); }

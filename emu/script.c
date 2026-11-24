@@ -74,6 +74,7 @@ void script_run(const char *text, const char *outdir, const char *name) {
         else if (!strcmp(cmd, "watchw") || !strcmp(cmd, "watchr")) { unsigned long lo = 0, len = 1; sscanf(tok, " %*s %lx %lx", &lo, &len); if (cmd[5] == 'w') dbg_watch_write((uint32_t)lo, (uint32_t)len); else dbg_watch_read((uint32_t)lo, (uint32_t)len); }
         else if (!strcmp(cmd, "watchoff")) dbg_watch_clear();
         else if (!strcmp(cmd, "wreset")) dbg_watch_reset_budget();
+        else if (!strcmp(cmd, "pc")) { printf("PC %08x SR %08x PR %08x\n", cpu.pc, cpu.sr, cpu.pr); fflush(stdout); }
         else if (!strcmp(cmd, "watchpc")) { char w[8] = ""; sscanf(tok, " %*s %7s", w); dbg_watch_any_pc(!strcmp(w, "any")); }
         else if (!strcmp(cmd, "bp")) { unsigned long pc = 0; sscanf(tok, " %*s %d %lx", &a, &pc); dbg_set_breakpoint((uint32_t)pc, a); }
         else if (!strcmp(cmd, "ctron")) dbg_call_trace(1);

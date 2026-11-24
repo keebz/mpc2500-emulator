@@ -193,6 +193,12 @@ extern const char *g_fw_dir, *g_card_dir;   // firmware / card folders in use (s
 #define APP_VERSION "dev"
 #endif
 int  ui_disclaimer(void);   // start-up warning that must be accepted every launch (SDL builds); 1 = accepted, 0 = declined: the caller must quit
+// Virtual unit (packaged app): the emulated flash chip is kept in a file, so what is installed (boot block, OS, settings, internal memory) survives like on the real unit.
+enum { LAUNCH_POWER = 0, LAUNCH_FLASH = 1, LAUNCH_DIRECT = 2 };   // chooser result: power on the unit / write the chosen OS to the unit like the updater / developer direct load
+extern int g_launch_action;
+void app_unit_set(const char *path); const char *app_unit_path(void); void app_unit_active(int on); int app_unit_save(void);
+int  app_unit_info(char *out, size_t n);   // 1 = the unit file exists; out = OS header text (or "no OS installed")
+void app_unit_reset(void);
 int  ui_launcher(const char *fwdir, char *out_fw, size_t n, const char *message);   // window to choose a firmware (SDL builds); 1 = chosen, 0 = quit
 typedef struct { char path[512]; char name[128]; char kind[24]; int ok; char note[200]; long size; } FwEntry;
 int  fw_scan_folder(const char *dir, FwEntry *out, int max);      // classify every candidate firmware file in a folder

@@ -106,6 +106,7 @@ void app_open_folder(const char *dir) {
     if (system(cmd) != 0) { /* no file manager available: nothing to do */ }
 }
 void app_restart(const char *firmware, const char *card, int pick) {
+    app_unit_save();                                  // keep what the virtual unit holds across the restart
     const char *exe = app_exe_path(); if (!*exe) return;
     char *argv[8]; int n = 0; argv[n++] = (char *)exe;
     if (pick) argv[n++] = (char *)"--pick";
@@ -232,3 +233,30 @@ int app_build_card(const char *srcdir, const char *outimg, char *msg, size_t msg
     if (rc != 0) { snprintf(msg, msgn, "Writing the card image failed."); return -1; }
     snprintf(msg, msgn, "Built a %d MB card with %d files.", size_mb, nfiles); return 0;
 }
+
+// ---- virtual unit: the flash chip's contents in a file ----
+int g_launch_action = LAUNCH_POWER;
+static char unit_file[PATH_MAX + 32]; static int unit_on;
+void app_unit_set(const char *path) { snprintf(unit_file, sizeof unit_file, "%s", path); }
+const char *app_unit_path(void) { return unit_file; }
+void app_unit_active(int on) { unit_on = on; }
+int app_unit_save(void) {                         // written to a temporary file first so a crash never leaves a half-written unit
+    if (!unit_on || !unit_file[0] || !flash_data) return 0;
+    char tmp[PATH_MAX + 40]; snprintf(tmp, sizeof tmp, "%s.new", unit_file);
+    if (flash_save(tmp) != 0) { remove(tmp); return -1; }
+    return rename(tmp, unit_file) == 0 ? 0 : -1;
+}
+int app_unit_info(char *out, size_t n) {
+    out[0] = 0; if (!unit_file[0]) return 0;
+    FILE *f = fopen(unit_file, "rb"); if (!f) return 0;
+    uint8_t b[48] = { 0 }; size_t got = 0;
+    if (fseek(f, 0x10000, SEEK_SET) == 0) got = fread(b, 1, 40, f);
+    fclose(f);
+    size_t k = 0; int blank = 1;
+    for (size_t i = 0; i < got && k < n - 1; i++) { if (b[i] != 0xFF) blank = 0; out[k++] = (b[i] >= 32 && b[i] < 127) ? (char)b[i] : ' '; }
+    out[k] = 0; while (k > 0 && out[k - 1] == ' ') out[--k] = 0;
+    if (blank || strncmp(out, "MPC2500", 7)) snprintf(out, n, "no OS installed");
+    else { char *r = out; char *w = out; int sp = 0; while (*r) { if (*r == ' ') { if (!sp) *w++ = ' '; sp = 1; } else { *w++ = *r; sp = 0; } r++; } *w = 0; }   // squeeze the padding
+    return 1;
+}
+void app_unit_reset(void) { if (unit_file[0]) remove(unit_file); }

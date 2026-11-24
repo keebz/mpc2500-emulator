@@ -61,6 +61,8 @@ uint32_t flash_read(uint32_t off, int size) {
 }
 
 static void program(uint32_t a, uint32_t val, int size) {
+    static int plog = -1; if (plog < 0) plog = getenv("FLASH_PLOG") != 0;
+    if (plog) fprintf(stderr, "prog %06x %0*x @%llu pc=%08x pr=%08x\n", a, size * 2, val, (unsigned long long)cpu.cycles, cpu.pc, cpu.pr);
     flash_guard(a, 0);
     for (int i = 0; i < size && a + i < FLASH_SIZE; i++) flash_data[a + i] &= (uint8_t)(val >> (8 * i));   // programming only clears bits
     flash_programs++;
@@ -73,7 +75,7 @@ static void erase_sector(uint32_t a) {
 
 void flash_write(uint32_t a, uint32_t val, int size) {
     uint32_t cmd = val & 0xFF, lo = a & 0xFFF;
-    if (cycle != 3 && getenv("FLASH_LOG") && cmd != 0xAA && cmd != 0x55) fprintf(stderr, "flash: cmd %02x @%06x pc=%08x\n", cmd, a, cpu.pc); if (cmd == 0xF0) { cycle = 0; mode = M_READ; erase_pending = 0; dbg_update_windows(); return; }   // reset (also leaves autoselect/CFI)
+    if (cycle != 3 && getenv("FLASH_LOG") && cmd != 0xAA && cmd != 0x55) fprintf(stderr, "flash: cmd %02x @%06x pc=%08x\n", cmd, a, cpu.pc); if (cycle != 3 && cmd == 0xF0) { cycle = 0; mode = M_READ; erase_pending = 0; dbg_update_windows(); return; }   // reset (also leaves autoselect/CFI)
     switch (cycle) {
     case 0:
         if (lo == 0xAAA && cmd == 0xAA) cycle = 1;

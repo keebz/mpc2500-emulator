@@ -21,16 +21,29 @@ Download the file for your system from the project's **Releases** page. It conta
 
 ![The firmware chooser](docs/images/launcher.png)
 
-1. **Drag your firmware file onto the window** (or copy it into the `firmware` folder and press `R`). The list shows what each file is.
-2. Select it and press **Enter** (or double-click it). The emulator window opens and the firmware boots.
+1. **Drag your firmware file onto the window** (or copy it into the `firmware` folder and press `R`). The list shows what each file is. Start with the stock Akai OS.
+2. Select it and click **Flash OS** (or press `I`, or double-click it). This creates your **virtual unit**, the emulated flash chip that is kept in the file `unit.flash`, installs the OS on it the way the Akai updater does, and powers it on.
 3. **Put your kits and sounds on the memory card.** The firmware can only load files from the card, so they have to go on one:
    1. Click **1 Card-files folder** (or press `F`). Your file manager opens the `card-files` folder. Copy your kits and sounds into it (`.PGM`, `.SND`, `.WAV`, `.SEQ`, `.ALL`...). Sub-folders are fine. A folder named `AUTOLOAD` is loaded by the firmware at start-up, as on the real unit.
    2. Click **2 Build card** (or press `B`). This makes the card image from that folder. It replaces the current card (the old one is kept as `card.img.bak`), so do it again whenever you add files.
-   3. Click **Start**. In the firmware press **LOAD** to see the card.
+   3. Click **Power on**. In the firmware press **LOAD** to see the card.
 
    Other options: **Blank card** makes an *empty* card (nothing on it), **Eject** starts without a card, **Show card** opens the folder holding the card image, and you can drop an existing card image (`.img`) onto the window to use it. Whatever the firmware saves to the card is kept in the card image.
 
-**Afterwards:** the chooser appears at every start with your last firmware already selected, so press **Enter** to go. `Ctrl+O` returns to the chooser from the running emulator, `Esc` quits. The panel controls are described in [section 4](#4-first-run); the other sections of this guide are for people building from source or testing firmware from the command line.
+**Afterwards:** the chooser appears at every start; press **Enter** (**Power on**) to start the unit as you left it, with its installed OS, settings and internal memory. `Ctrl+O` returns to the chooser from the running emulator, `Esc` quits. The panel controls are described in [section 4](#4-first-run); the other sections of this guide are for people building from source or testing firmware from the command line.
+
+### Installing JJOS XL, OS3 or Light (the real way)
+
+On a real unit the boot block and the stock OS refuse the large JJOS images; you install **JJOS JV 3.13** first and then install the others from its Load page. The virtual unit works the same way, because the firmware's own installers run:
+
+1. In the chooser select **JV 3.13** and click **Flash OS** (this is what the Akai updater would do when you give it a JV 3.13 file as `MPC2500.BIN`). Selecting the XL image instead is refused with an explanation.
+2. Put the XL, OS3 or Light file in the **card-files** folder (name it with a `.OSX` extension, for example `XL390.OSX`; JV 3.13 does not list an OS3 file named `.OS3`), click **Build card**, then **Power on**.
+3. In JV 3.13 open the Load page (`MODE` + `PAD 2`), select the file and press `F6` (DO IT). An **OS-XL update** dialog appears; press `F5` (DO IT) again. Wait for *Writing to Flash memory is completed* and use **Ctrl+R** (power cycle) or quit and **Power on** again.
+4. The unit now starts the new OS. To go back, **Flash OS** another build (for stock, a full Akai OS build).
+
+**Developer direct load** (button or `D`) skips all of this and loads any image straight into a temporary flash: handy for quick checks, but it is not how the hardware behaves and nothing is kept.
+
+> Installing the XL image overwrites the internal-memory area of the virtual unit, just as on a real unit.
 
 
 ## Where the app keeps your files (and how to uninstall)
@@ -42,9 +55,10 @@ The first time the packaged app starts it creates a folder called **MPC2500 Emul
 | `firmware/` | the firmware files you added |
 | `card-files/` | the kits and sounds you want on the card (you fill this) |
 | `card/` | the card image the emulator uses (`card.img`, and `card.img.bak` after a rebuild) |
+| `unit.flash` | your **virtual unit**: the emulated flash chip with the installed OS, settings and internal memory (8 MB) |
 | `settings.txt` | the app's remembered choices (last firmware, card) |
 
-**Deleting the app does not delete this folder**, and the folder is never removed automatically. To uninstall completely, delete the app *and* the `MPC2500 Emulator` folder. Copy out anything you want to keep first, such as the card image or your own firmware files. To make the app forget your choices without deleting your files, delete only `settings.txt`. Setting the environment variable `MPC2500_HOME` makes the app use a different folder.
+**Deleting the app does not delete this folder**, and the folder is never removed automatically. To uninstall completely, delete the app *and* the `MPC2500 Emulator` folder. Copy out anything you want to keep first, such as the card image, `unit.flash` (it holds your internal memory) or your own firmware files. To make the app forget your choices without deleting your files, delete only `settings.txt`. Setting the environment variable `MPC2500_HOME` makes the app use a different folder.
 
 ---
 
@@ -348,7 +362,7 @@ Same as stock:
 ![JJOS 3.13](docs/images/lcd_jjos_jv313.png)
 
 ### 7.3 Run-in-place test images (`.osx`, `.os3`)
-These are launched directly by the boot block without the normal update step:
+In the packaged app these are installed from JV 3.13 (see *Installing JJOS XL, OS3 or Light*). From source, for a quick developer check, the image can be launched directly, skipping the installer:
 ```bash
 ./run_live.sh --firmware firmware/mpc2500_xl390.osx
 ```

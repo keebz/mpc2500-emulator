@@ -79,6 +79,8 @@ static void identify(void) {
 
 static void command(uint8_t c) {
     ata.cmd = c; ata.err = 0; ata.writing = 0;
+    static int alog = -1; if (alog < 0) alog = getenv("ATA_LOG") != 0;
+    if (alog) fprintf(stderr, "ata: cmd %02x lba %02x%02x%02x head %02x count %02x\n", c, ata.lba2, ata.lba1, ata.lba0, ata.head, ata.count);
     if (!card_present) { ata.status = 0; return; }
     switch (c) {
     case 0x20: case 0x21: case 0xC4:                                    // READ SECTORS / READ MULTIPLE

@@ -11,7 +11,7 @@
 #define WIN_W 920
 #define WIN_H 700
 typedef struct { int x, y, w, h; const char *label; int id; } Btn;
-enum { B_START = 1, B_OPEN, B_NEWCARD, B_BUILD, B_CARDDIR, B_QUIT, B_RESCAN, B_FILES, B_EJECT };
+enum { B_START = 1, B_OPEN, B_NEWCARD, B_BUILD, B_CARDDIR, B_QUIT, B_RESCAN, B_FILES, B_EJECT, B_POWER, B_FLASH, B_DIRECT, B_RESET };
 
 static const uint8_t lfont[96][16] = {
 #include "launcherfont.inc"
@@ -31,21 +31,47 @@ static void text(SDL_Renderer *r, int x, int y, int scale, SDL_Color c, const ch
         SDL_Rect src = { (ch - 0x20) * 8, 0, 8, 16 }, dst = { x + i * 8 * scale, y, 8 * scale, 16 * scale }; SDL_RenderCopy(r, font_tex, &src, &dst);
     }
 }
-// word-wrapped text; returns the y after the last line
-static int wrapped(SDL_Renderer *r, int x, int y, int scale, SDL_Color c, const char *s, int cols) {
-    char line[256]; int ll = 0; const char *p = s;
-    while (*p) {
-        const char *e = p; while (*e && *e != ' ') e++; int wl = (int)(e - p);
-        if (ll && ll + 1 + wl > cols) { line[ll] = 0; text(r, x, y, scale, c, line, 0); y += 18 * scale; ll = 0; }
-        if (ll) line[ll++] = ' ';
-        for (int i = 0; i < wl && ll < 250; i++) line[ll++] = p[i];
-        p = e; while (*p == ' ') p++;
+// Proportional anti-aliased text (Liberation Sans, see tools/make_launcher_sans.py) for the chooser and the start-up notice.
+#include "launcherfont_sans.inc"
+typedef struct { const unsigned char *px; const unsigned short *x; const unsigned char *adv; int h, aw; SDL_Texture *tex; } PFace;
+static PFace pf[3] = { { pf_body_px, pf_body_x, pf_body_adv, PF_BODY_H, PF_BODY_AW, 0 }, { pf_bold_px, pf_bold_x, pf_bold_adv, PF_BOLD_H, PF_BOLD_AW, 0 }, { pf_big_px, pf_big_x, pf_big_adv, PF_BIG_H, PF_BIG_AW, 0 } };
+static void make_pfonts(SDL_Renderer *r) {
+    for (int f = 0; f < 3; f++) {
+        SDL_Surface *s = SDL_CreateRGBSurfaceWithFormat(0, pf[f].aw, pf[f].h, 32, SDL_PIXELFORMAT_ARGB8888); uint32_t *px = (uint32_t *)s->pixels;
+        for (int i = 0; i < pf[f].aw * pf[f].h; i++) px[i] = ((uint32_t)pf[f].px[i] << 24) | 0xFFFFFFu;
+        pf[f].tex = SDL_CreateTextureFromSurface(r, s); SDL_FreeSurface(s); SDL_SetTextureBlendMode(pf[f].tex, SDL_BLENDMODE_BLEND);
     }
-    if (ll) { line[ll] = 0; text(r, x, y, scale, c, line, 0); y += 18 * scale; }
+}
+static void free_pfonts(void) { for (int f = 0; f < 3; f++) { if (pf[f].tex) SDL_DestroyTexture(pf[f].tex); pf[f].tex = 0; } }
+static int face_of(int scale) { return scale == 2 ? 2 : scale == 3 ? 1 : 0; }          // scale: 1 = body, 2 = large, 3 = bold
+static int pw(int scale, const char *s) { int f = face_of(scale), w = 0; for (; *s; s++) { int c = (unsigned char)*s; if (c < 0x20 || c > 0x7E) c = '?'; w += pf[f].adv[c - 0x20]; } return w; }
+static int line_h(int scale) { return pf[face_of(scale)].h + 2; }
+// draws s at (x, y); maxcols > 0 limits the width to maxcols cells of 8 px (x scale 2 for the large face)
+static void ptext(SDL_Renderer *r, int x, int y, int scale, SDL_Color c, const char *s, int maxcols) {
+    int f = face_of(scale), lim = maxcols > 0 ? maxcols * 8 * (scale == 2 ? 2 : 1) : 1 << 30, cx = 0;
+    SDL_SetTextureColorMod(pf[f].tex, c.r, c.g, c.b); SDL_SetTextureAlphaMod(pf[f].tex, c.a);
+    for (; *s; s++) {
+        int ch = (unsigned char)*s; if (ch < 0x20 || ch > 0x7E) ch = '?'; int i = ch - 0x20, adv = pf[f].adv[i];
+        if (cx + adv > lim) break;
+        SDL_Rect src = { pf[f].x[i], 0, adv + 2, pf[f].h }, dst = { x + cx - 1, y, adv + 2, pf[f].h }; SDL_RenderCopy(r, pf[f].tex, &src, &dst); cx += adv;
+    }
+}
+// word-wrapped text in a column cols * 8 px wide; returns the y after the last line
+static int pwrapped(SDL_Renderer *r, int x, int y, int scale, SDL_Color c, const char *s, int cols) {
+    char line[400]; int ll = 0, lw = 0, maxw = cols * 8 * (scale == 2 ? 2 : 1); const char *p = s; int sp = pw(scale, " ");
+    while (*p) {
+        const char *e = p; while (*e && *e != ' ') e++; int wl = (int)(e - p); char word[200]; snprintf(word, sizeof word, "%.*s", wl, p); int ww = pw(scale, word);
+        if (ll && lw + sp + ww > maxw) { line[ll] = 0; ptext(r, x, y, scale, c, line, 0); y += line_h(scale); ll = 0; lw = 0; }
+        if (ll) { line[ll++] = ' '; lw += sp; }
+        for (int i = 0; i < wl && ll < 390; i++) line[ll++] = p[i];
+        lw += ww; p = e; while (*p == ' ') p++;
+    }
+    if (ll) { line[ll] = 0; ptext(r, x, y, scale, c, line, 0); y += line_h(scale); }
     return y;
 }
-// text drawing for the live window (cheat sheet and toolbar): the same bitmap font, created on first use for that window's renderer
-void ui_draw_text(SDL_Renderer *r, int x, int y, int scale, SDL_Color c, const char *s) { if (!font_tex) make_font(r); text(r, x, y, scale, c, s, 0); }
+// text drawing for the live window (toolbar and cheat sheet): the same proportional font, created on first use for that window's renderer
+void ui_draw_text(SDL_Renderer *r, int x, int y, int scale, SDL_Color c, const char *s) { if (!pf[0].tex) make_pfonts(r); ptext(r, x, y, scale, c, s, 0); }
+int ui_text_width(int scale, const char *s) { return pw(scale, s); }
 static const char *kind_label(const FwEntry *e) {
     if (!strcmp(e->kind, "build")) return "OS build"; if (!strcmp(e->kind, "test")) return "run-in-place image";
     if (!strcmp(e->kind, "sos")) return "OS-only (.SOS)"; if (!strcmp(e->kind, "dump")) return "whole-flash dump"; return "not recognised";
@@ -72,7 +98,7 @@ int ui_disclaimer(void) {
     SDL_Window *win = SDL_CreateWindow("MPC2500 Emulator - Important notice", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WIN_W, WIN_H, SDL_WINDOW_RESIZABLE);
     SDL_Renderer *ren = win ? SDL_CreateRenderer(win, -1, SDL_RENDERER_PRESENTVSYNC) : 0;
     if (!ren) { fprintf(stderr, "SDL window/renderer: %s\n", SDL_GetError()); return 0; }
-    SDL_RenderSetLogicalSize(ren, WIN_W, WIN_H); make_font(ren);
+    SDL_RenderSetLogicalSize(ren, WIN_W, WIN_H); make_pfonts(ren);
     const int top = 64, bot = WIN_H - 92, view = bot - top;
     int scroll = 0, total = view, result = -1, nag = 0; const char *inject = (auto_t && !strcmp(auto_t, "inject")) ? getenv("DISCLAIMER_INJECT") : 0; int frame = 0;
     Btn bdecl = { 24, WIN_H - 56, 300, 40, "Decline and quit (D / Esc)", 1 }, bacc = { WIN_W - 24 - 300, WIN_H - 56, 300, 40, "I accept (A)", 2 };
@@ -108,32 +134,32 @@ int ui_disclaimer(void) {
         at_end = scroll >= maxs - 2;
         if (nag > 0) nag--;
         SDL_SetRenderDrawColor(ren, 22, 24, 28, 255); SDL_RenderClear(ren);
-        text(ren, 24, 14, 2, red, "WARNING - EXPERIMENTAL SOFTWARE", 0);
+        ptext(ren, 24, 12, 2, red, "Warning: experimental software", 0);
         SDL_SetRenderDrawColor(ren, 40, 43, 50, 255); SDL_Rect box = { 24, top - 4, WIN_W - 48, view + 8 }; SDL_RenderFillRect(ren, &box);
         SDL_Rect clip = { 24, top, WIN_W - 48, view }; SDL_RenderSetClipRect(ren, &clip);
         int y = top + 4 - scroll;
         for (size_t i = 0; i < sizeof disc_lines / sizeof *disc_lines; i++) {
             const char *l = disc_lines[i];
-            if (!*l) { y += 8; continue; }
-            if (*l == '#') y = wrapped(ren, 36, y, 1, warn, l + 1, 104) + 2; else y = wrapped(ren, 36, y, 1, white, l, 104);
+            if (!*l) { y += 6; continue; }
+            if (*l == '#') y = pwrapped(ren, 36, y + 4, 3, warn, l + 1, 104) + 3; else y = pwrapped(ren, 36, y, 1, white, l, 104);
         }
         total = y + scroll - top + 8; SDL_RenderSetClipRect(ren, 0);
         if (total > view) {                                                                  // scroll bar
             int bh = view * view / total; if (bh < 24) bh = 24; int by = top + (view - bh) * scroll / (maxs ? maxs : 1);
             SDL_SetRenderDrawColor(ren, 90, 95, 105, 255); SDL_Rect sb = { WIN_W - 22, by, 8, bh }; SDL_RenderFillRect(ren, &sb);
         }
-        text(ren, 24, WIN_H - 84, 1, nag ? red : dim, at_end ? "You have reached the end. Choose to accept or decline." : "Scroll to the end of the notice (mouse wheel, arrow keys, Page Down) to enable \"I accept\".", 0);
+        ptext(ren, 24, WIN_H - 86, 1, nag ? red : dim, at_end ? "You have reached the end. Choose to accept or decline." : "Scroll to the end of the notice (mouse wheel, arrow keys, Page Down) to enable \"I accept\".", 0);
         SDL_Rect r1 = { bdecl.x, bdecl.y, bdecl.w, bdecl.h }, r2 = { bacc.x, bacc.y, bacc.w, bacc.h };
         SDL_SetRenderDrawColor(ren, 120, 40, 40, 255); SDL_RenderFillRect(ren, &r1);
         if (at_end) SDL_SetRenderDrawColor(ren, 70, 120, 50, 255); else SDL_SetRenderDrawColor(ren, 45, 48, 55, 255);
         SDL_RenderFillRect(ren, &r2);
-        text(ren, r1.x + (r1.w - (int)strlen(bdecl.label) * 8) / 2, r1.y + 12, 1, white, bdecl.label, 0);
-        SDL_Color ac = at_end ? white : dim; text(ren, r2.x + (r2.w - (int)strlen(bacc.label) * 8) / 2, r2.y + 12, 1, ac, bacc.label, 0);
+        ptext(ren, r1.x + (r1.w - pw(1, bdecl.label)) / 2, r1.y + 12, 1, white, bdecl.label, 0);
+        SDL_Color ac = at_end ? white : dim; ptext(ren, r2.x + (r2.w - pw(1, bacc.label)) / 2, r2.y + 12, 1, ac, bacc.label, 0);
         const char *shot = getenv("DISCLAIMER_SHOT"); static int sf; if (shot && ++sf == 6) { SDL_Surface *sfc = SDL_CreateRGBSurfaceWithFormat(0, WIN_W, WIN_H, 32, SDL_PIXELFORMAT_ARGB8888); SDL_RenderReadPixels(ren, 0, SDL_PIXELFORMAT_ARGB8888, sfc->pixels, sfc->pitch); SDL_SaveBMP(sfc, shot); SDL_FreeSurface(sfc); }
         SDL_RenderPresent(ren);
         SDL_Delay(8);
     }
-    SDL_DestroyTexture(font_tex); font_tex = 0; SDL_DestroyRenderer(ren); SDL_DestroyWindow(win);
+    free_pfonts(); SDL_DestroyRenderer(ren); SDL_DestroyWindow(win);
     return result;
 }
 
@@ -142,7 +168,7 @@ int ui_launcher(const char *fwdir, char *out_fw, size_t outn, const char *messag
     SDL_Window *win = SDL_CreateWindow("MPC2500 Emulator", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WIN_W, WIN_H, SDL_WINDOW_RESIZABLE);
     SDL_Renderer *ren = win ? SDL_CreateRenderer(win, -1, SDL_RENDERER_PRESENTVSYNC) : 0;
     if (!ren) { fprintf(stderr, "SDL window/renderer: %s\n", SDL_GetError()); return 0; }
-    SDL_RenderSetLogicalSize(ren, WIN_W, WIN_H); make_font(ren);
+    SDL_RenderSetLogicalSize(ren, WIN_W, WIN_H); make_pfonts(ren);
     SDL_EventState(SDL_DROPFILE, SDL_ENABLE);
 
     char carddir[PATH_MAX + 16], cardfiles[PATH_MAX + 16], cardimg[PATH_MAX + 32], msg[400] = "", cardpath[PATH_MAX + 32] = "";
@@ -160,24 +186,34 @@ int ui_launcher(const char *fwdir, char *out_fw, size_t outn, const char *messag
     {   // start on the last firmware used
         char last[PATH_MAX + 8]; if (app_setting_get("firmware", last, sizeof last)) for (int i = 0; i < n; i++) if (!strcmp(ent[i].path, last)) sel = i;
     }
-    int result = -1;
+    int result = -1, direct_mode = 0, confirm_reset = 0; char unitinfo[120] = ""; const int unit_mode = app_unit_path()[0] != 0;
     while (result < 0) {
+        int unit_exists = unit_mode && app_unit_info(unitinfo, sizeof unitinfo);
         if (app_setting_get("card", cardpath, sizeof cardpath)) { if (!strcmp(cardpath, "none")) cardpath[0] = 0; } else { struct stat st; cardpath[0] = 0; if (stat(cardimg, &st) == 0) snprintf(cardpath, sizeof cardpath, "%s", cardimg); }
         SDL_Event e;
         int do_action = 0;
         { static int fr; if (getenv("LAUNCHER_ENTER") && ++fr == 3) do_action = B_START; }
         { static int fr2; const char *acts = getenv("LAUNCHER_ACTIONS");        // test hook: one action per 4 frames, b = build card, e = eject, s = start
-          if (acts && ++fr2 % 4 == 0 && acts[fr2 / 4 - 1]) { char c = acts[fr2 / 4 - 1]; do_action = c == 'b' ? B_BUILD : c == 'e' ? B_EJECT : c == 's' ? B_START : 0; } }       // test hook: press Start after a few frames
-        Btn btns[10]; int nb = 0;
-        int by = WIN_H - 56, cy = 522;
+          if (acts && ++fr2 % 4 == 0 && acts[fr2 / 4 - 1]) { char c = acts[fr2 / 4 - 1]; do_action = c == 'b' ? B_BUILD : c == 'e' ? B_EJECT : c == 's' ? B_START : c == 'i' ? B_FLASH : 0; } }       // test hook: press Start after a few frames
+        Btn btns[12]; int nb = 0;
+        int by = WIN_H - 56, cy = 488;
         btns[nb++] = (Btn){ 36, cy, 210, 34, "1  Card-files folder (F)", B_FILES };
         btns[nb++] = (Btn){ 256, cy, 200, 34, "2  Build card (B)", B_BUILD };
         btns[nb++] = (Btn){ 466, cy, 140, 34, "Blank card (N)", B_NEWCARD };
         btns[nb++] = (Btn){ 616, cy, 110, 34, "Eject (E)", B_EJECT };
         btns[nb++] = (Btn){ 736, cy, 148, 34, "Show card (C)", B_CARDDIR };
-        btns[nb++] = (Btn){ 24, by, 200, 36, "Start (Enter)", B_START };
-        btns[nb++] = (Btn){ 236, by, 240, 36, "Firmware folder (O)", B_OPEN };
-        btns[nb++] = (Btn){ 802, by, 94, 36, "Quit", B_QUIT };
+        if (unit_mode) {
+            btns[nb++] = (Btn){ 24, by, 176, 36, "Power on (Enter)", B_POWER };
+            btns[nb++] = (Btn){ 210, by, 160, 36, "Flash OS (I)", B_FLASH };
+            btns[nb++] = (Btn){ 380, by, 244, 36, direct_mode ? "Developer direct load: ON (D)" : "Developer direct load: off (D)", B_DIRECT };
+            btns[nb++] = (Btn){ 634, by, 150, 36, "Folders (O)", B_OPEN };
+            btns[nb++] = (Btn){ 794, by, 102, 36, "Quit", B_QUIT };
+            btns[nb++] = (Btn){ 736, 36, 160, 24, confirm_reset ? "Press X to confirm" : "Reset unit (X)", B_RESET };
+        } else {
+            btns[nb++] = (Btn){ 24, by, 200, 36, "Start (Enter)", B_START };
+            btns[nb++] = (Btn){ 236, by, 240, 36, "Firmware folder (O)", B_OPEN };
+            btns[nb++] = (Btn){ 802, by, 94, 36, "Quit", B_QUIT };
+        }
         while (SDL_PollEvent(&e)) {
             if (e.type == SDL_QUIT) result = 0;
             else if (e.type == SDL_KEYDOWN) {
@@ -185,14 +221,14 @@ int ui_launcher(const char *fwdir, char *out_fw, size_t outn, const char *messag
                 if (k == SDLK_ESCAPE) result = 0;
                 else if (k == SDLK_UP && sel > 0) sel--;
                 else if (k == SDLK_DOWN && sel + 1 < n) sel++;
-                else if (k == SDLK_RETURN || k == SDLK_KP_ENTER) do_action = B_START;
+                else if (k == SDLK_RETURN || k == SDLK_KP_ENTER) do_action = B_START; else if (k == SDLK_i && unit_mode) do_action = B_FLASH; else if (k == SDLK_d && unit_mode) do_action = B_DIRECT; else if (k == SDLK_x && unit_mode) do_action = B_RESET;
                 else if (k == SDLK_o) do_action = B_OPEN; else if (k == SDLK_r) do_action = B_RESCAN;
                 else if (k == SDLK_n) do_action = B_NEWCARD; else if (k == SDLK_b) do_action = B_BUILD; else if (k == SDLK_c) do_action = B_CARDDIR; else if (k == SDLK_f) do_action = B_FILES; else if (k == SDLK_e) do_action = B_EJECT;
             } else if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
                 int mx = e.button.x, my = e.button.y;
                 for (int i = 0; i < nb; i++) if (mx >= btns[i].x && mx < btns[i].x + btns[i].w && my >= btns[i].y && my < btns[i].y + btns[i].h) do_action = btns[i].id;
-                int row = (my - 128) / 52; if (my >= 128 && row >= 0 && row < n && row < 4 && mx < WIN_W - 24) {
-                    sel = row; Uint32 t = SDL_GetTicks(); if (row == last_row && t - last_click < 450) do_action = B_START; last_click = t; last_row = row;
+                int row = (my - 128) / 52; if (my >= 128 && row >= 0 && row < n && row < 3 && mx < WIN_W - 24) {
+                    sel = row; Uint32 t = SDL_GetTicks(); if (row == last_row && t - last_click < 450) do_action = unit_mode ? B_FLASH : B_START; last_click = t; last_row = row;
                 }
             } else if (e.type == SDL_MOUSEWHEEL) { if (e.wheel.y > 0 && sel > 0) sel--; else if (e.wheel.y < 0 && sel + 1 < n) sel++; }
             else if (e.type == SDL_DROPFILE) {
@@ -213,11 +249,38 @@ int ui_launcher(const char *fwdir, char *out_fw, size_t outn, const char *messag
         }
         if (do_action) {
             if (do_action != B_BUILD) confirm_build = 0;
+            if (do_action != B_RESET) confirm_reset = 0;
             switch (do_action) {
             case B_START:
-                if (n > 0 && ent[sel].ok) { snprintf(out_fw, outn, "%s", ent[sel].path); app_setting_set("firmware", ent[sel].path); result = 1; }
-                else snprintf(msg, sizeof msg, n ? "That file is not a firmware image the emulator recognises." : "There is no firmware yet: drop a firmware file onto this window.");
+                if (unit_mode) { do_action = unit_exists && !direct_mode ? B_POWER : B_FLASH; }
+                else {
+                    if (n > 0 && ent[sel].ok) { snprintf(out_fw, outn, "%s", ent[sel].path); app_setting_set("firmware", ent[sel].path); g_launch_action = LAUNCH_DIRECT; result = 1; }
+                    else snprintf(msg, sizeof msg, n ? "That file is not a firmware image the emulator recognises." : "There is no firmware yet: drop a firmware file onto this window.");
+                    break;
+                }
+                /* fall through to the unit actions below */
+            default: break;
+            }
+            switch (do_action) {
+            case B_POWER:
+                if (unit_exists) { out_fw[0] = 0; g_launch_action = LAUNCH_POWER; result = 1; }
+                else snprintf(msg, sizeof msg, "There is no virtual unit yet: select an Akai OS build in the list and click \"Flash OS\" to create it.");
                 break;
+            case B_FLASH:
+                if (!(n > 0 && ent[sel].ok)) { snprintf(msg, sizeof msg, n ? "That file is not a firmware image the emulator recognises." : "There is no firmware yet: drop a firmware file onto this window."); break; }
+                if (!direct_mode && !strcmp(ent[sel].kind, "test")) {
+                    snprintf(msg, sizeof msg, "%s cannot be installed by the boot block or the Akai OS updater, exactly like the real unit. Install JJOS JV 3.13 first, then put this file on the card and install it from the JV 3.13 Load page. (Developer: D loads it directly.)", ent[sel].name);
+                    break;
+                }
+                snprintf(out_fw, outn, "%s", ent[sel].path); app_setting_set("firmware", ent[sel].path);
+                g_launch_action = direct_mode ? LAUNCH_DIRECT : LAUNCH_FLASH; result = 1; break;
+            case B_DIRECT: direct_mode = !direct_mode; snprintf(msg, sizeof msg, direct_mode ? "Developer direct load ON: Flash OS loads the selected file straight into a temporary flash, bypassing the installer. Nothing is kept in the virtual unit." : "Developer direct load off."); break;
+            case B_RESET:
+                if (!unit_exists) { snprintf(msg, sizeof msg, "There is no virtual unit to reset."); break; }
+                if (!confirm_reset) { confirm_reset = 1; snprintf(msg, sizeof msg, "This erases the virtual unit: the installed OS, settings and INTERNAL MEMORY. Press X again to confirm."); break; }
+                app_unit_reset(); confirm_reset = 0; snprintf(msg, sizeof msg, "Virtual unit erased. Select an Akai OS build and click Flash OS to create a new one."); break;
+            }
+            switch (do_action) {
             case B_OPEN: app_open_folder(fwdir); break;
             case B_RESCAN: RESCAN(); snprintf(msg, sizeof msg, "Folder rescanned."); break;
             case B_CARDDIR: app_open_folder(carddir); break;
@@ -241,50 +304,53 @@ int ui_launcher(const char *fwdir, char *out_fw, size_t outn, const char *messag
         // ---- draw ----
         SDL_SetRenderDrawColor(ren, 22, 24, 28, 255); SDL_RenderClear(ren);
         SDL_Color white = { 235, 235, 240, 255 }, dim = { 150, 155, 165, 255 }, lime = { 170, 200, 68, 255 }, warn = { 255, 200, 90, 255 };
-        text(ren, 24, 14, 2, lime, "MPC2500 Emulator", 0); text(ren, 24 + 17 * 16 + 8, 22, 1, dim, APP_VERSION, 0);
-        wrapped(ren, 24, 56, 1, dim, "Choose a firmware to run. Drop a firmware file onto this window to add it. No firmware is supplied with the emulator: use your own files.", 112);
+        ptext(ren, 24, 8, 2, lime, "MPC2500 Emulator", 0); ptext(ren, 24 + pw(2, "MPC2500 Emulator") + 12, 22, 1, dim, APP_VERSION, 0);
+        if (unit_mode) {
+            char ul[200]; snprintf(ul, sizeof ul, "Virtual unit: %s", unit_exists ? unitinfo : "none yet (no OS installed)"); ptext(ren, 24, 46, 3, lime, ul, 88);
+            ptext(ren, 24, 68, 1, dim, "Like the real unit: Flash OS installs an Akai OS build; XL/OS3/Light install from JV 3.13 (Load page).", 112);
+        } else pwrapped(ren, 24, 56, 1, dim, "Choose a firmware to run. Drop a firmware file onto this window to add it. No firmware is supplied with the emulator: use your own files.", 112);
         char line[PATH_MAX + 64]; { char tb[PATH_MAX + 8]; const char *fd = tilde(fwdir, tb, sizeof tb); size_t fl = strlen(fd); const char *tail = fl > 90 ? fd + fl - 88 : fd; snprintf(line, sizeof line, "Firmware folder: %s%s", fl > 90 ? "..." : "", tail); }
-        text(ren, 24, 94, 1, dim, line, 112);
-        SDL_SetRenderDrawColor(ren, 40, 43, 50, 255); SDL_Rect box = { 24, 118, WIN_W - 48, 222 }; SDL_RenderFillRect(ren, &box);
+        ptext(ren, 24, 94, 1, dim, line, 112);
+        SDL_SetRenderDrawColor(ren, 40, 43, 50, 255); SDL_Rect box = { 24, 118, WIN_W - 48, 170 }; SDL_RenderFillRect(ren, &box);
         if (n == 0) {
-            int y = wrapped(ren, 44, 136, 2, white, "No firmware found.", 50) + 6;
-            y = wrapped(ren, 44, y, 1, dim, "Drag a firmware file (.bin, .osx, .os3, .sos or an 8 MiB flash dump) onto this window,", 100);
-            y = wrapped(ren, 44, y, 1, dim, "or copy it into the folder shown above and press R.", 100);
+            int y = pwrapped(ren, 44, 136, 2, white, "No firmware found.", 50) + 6;
+            y = pwrapped(ren, 44, y, 1, dim, "Drag a firmware file (.bin, .osx, .os3, .sos or an 8 MiB flash dump) onto this window,", 100);
+            y = pwrapped(ren, 44, y, 1, dim, "or copy it into the folder shown above and press R.", 100);
         }
-        for (int i = 0; i < n && i < 4; i++) {
-            SDL_Rect row = { 30, 128 + i * 52, WIN_W - 60, 48 };
+        for (int i = 0; i < n && i < 3; i++) {
+            SDL_Rect row = { 30, 126 + i * 52, WIN_W - 60, 50 };
             if (i == sel) { SDL_SetRenderDrawColor(ren, 70, 82, 40, 255); SDL_RenderFillRect(ren, &row); }
             SDL_Color c = ent[i].ok ? white : dim;
-            char nm[64]; snprintf(nm, sizeof nm, "%s", ent[i].name); text(ren, 44, 128 + i * 52 + 2, 2, c, nm, 28);
-            char k[96]; snprintf(k, sizeof k, "%s", kind_label(&ent[i])); text(ren, 44 + 29 * 16, 128 + i * 52 + 8, 1, ent[i].ok ? lime : warn, k, 24);
-            char nt[256]; snprintf(nt, sizeof nt, "%ld KB   %s", ent[i].size / 1024, ent[i].note); text(ren, 44, 128 + i * 52 + 31, 1, dim, nt, 108);
+            char nm[64]; snprintf(nm, sizeof nm, "%s", ent[i].name); ptext(ren, 44, 126 + i * 52, 2, c, nm, 28);
+            char k[96]; snprintf(k, sizeof k, "%s", kind_label(&ent[i])); ptext(ren, 560, 126 + i * 52 + 8, 3, ent[i].ok ? lime : warn, k, 24);
+            char nt[256]; snprintf(nt, sizeof nt, "%ld KB   %s", ent[i].size / 1024, ent[i].note); ptext(ren, 44, 126 + i * 52 + 30, 1, dim, nt, 108);
         }
-        if (n > 4) { char more[64]; snprintf(more, sizeof more, "%d of %d shown (Up/Down to choose)", sel + 1, n); text(ren, 600, 26, 1, dim, more, 0); }
+        if (n > 3) { char more[64]; snprintf(more, sizeof more, "%d of %d shown (Up/Down to choose)", sel + 1, n); ptext(ren, 600, 26, 1, dim, more, 0); }
         // ---- the memory card panel ----
-        { SDL_SetRenderDrawColor(ren, 34, 38, 44, 255); SDL_Rect cb = { 24, 348, WIN_W - 48, 242 }; SDL_RenderFillRect(ren, &cb); }
-        text(ren, 36, 356, 1, lime, "YOUR KITS AND SOUNDS LIVE ON THE MEMORY CARD", 0);
-        { int y = 378;
-          y = wrapped(ren, 36, y, 1, white, "1. Click \"Card-files folder\" and copy your kits and sounds (.PGM .SND .WAV .SEQ .ALL ...) into it. Sub-folders are fine; a folder named AUTOLOAD is loaded by the firmware at start-up, as on the real unit.", 106);
-          y = wrapped(ren, 36, y, 1, white, "2. Click \"Build card\". This makes the card image from that folder (it replaces the current card; the old one is kept as card.img.bak). Do this again whenever you add files.", 106);
-          y = wrapped(ren, 36, y, 1, white, "3. Click Start. In the firmware press LOAD to see the card. Anything the firmware saves to the card is kept in the card image.", 106);
+        { SDL_SetRenderDrawColor(ren, 34, 38, 44, 255); SDL_Rect cb = { 24, 296, WIN_W - 48, 242 }; SDL_RenderFillRect(ren, &cb); }
+        ptext(ren, 36, 302, 3, lime, "Your kits and sounds live on the memory card", 0);
+        { int y = 324;
+          y = pwrapped(ren, 36, y, 1, white, "1. Click \"Card-files folder\" and copy your kits and sounds (.PGM .SND .WAV .SEQ .ALL ...) into it. Sub-folders are fine; a folder named AUTOLOAD is loaded by the firmware at start-up, as on the real unit.", 106);
+          y = pwrapped(ren, 36, y, 1, white, "2. Click \"Build card\". This makes the card image from that folder (it replaces the current card; the old one is kept as card.img.bak). Do this again whenever you add files.", 106);
+          y = pwrapped(ren, 36, y, 1, white, "3. Click Power on (Flash OS the first time). In the firmware press LOAD to see the card. Anything the firmware saves to the card is kept in the card image.", 106);
           (void)y; }
         SDL_Color cc = cardpath[0] ? white : dim;
         if (cardpath[0]) { struct stat st; char tb2[PATH_MAX + 8]; const char *cp2 = tilde(cardpath, tb2, sizeof tb2); size_t cl = strlen(cp2); const char *ct = cl > 80 ? cp2 + cl - 78 : cp2; snprintf(line, sizeof line, "Card: %s%s (%ld MB)", cl > 80 ? "..." : "", ct, stat(cardpath, &st) == 0 ? (long)(st.st_size / 1048576) : 0L); }
         else snprintf(line, sizeof line, "Card: none inserted (build one with steps 1 and 2)");
-        text(ren, 36, 496, 1, cc, line, 106);
-        if (msg[0]) wrapped(ren, 24, 600, 1, warn, msg, 112);
+        ptext(ren, 36, 462, 1, cc, line, 106);
+        if (msg[0]) pwrapped(ren, 24, 548, 1, warn, msg, 108);
         if (appm) { char tb3[PATH_MAX + 8], ln[PATH_MAX + 160]; const char *ud = tilde(app_user_dir(), tb3, sizeof tb3);
-          snprintf(ln, sizeof ln, "Your files (firmware, card, settings) are in the folder %s - deleting the app does not delete it.", ud); text(ren, 24, WIN_H - 18, 1, dim, ln, 112); }
+          snprintf(ln, sizeof ln, "Your files (firmware, card, settings) are in the folder %s - deleting the app does not delete it.", ud); ptext(ren, 24, WIN_H - 18, 1, dim, ln, 112); }
         for (int i = 0; i < nb; i++) {
             SDL_Rect b = { btns[i].x, btns[i].y, btns[i].w, btns[i].h }; SDL_SetRenderDrawColor(ren, btns[i].id == B_START ? 90 : 55, btns[i].id == B_START ? 120 : 60, btns[i].id == B_START ? 40 : 70, 255); SDL_RenderFillRect(ren, &b);
-            text(ren, b.x + (b.w - (int)strlen(btns[i].label) * 8) / 2, b.y + 10, 1, white, btns[i].label, 0);
+            ptext(ren, b.x + (b.w - pw(1, btns[i].label)) / 2, b.y + 10, 1, white, btns[i].label, 0);
         }
         static int shot_frames; const char *shot = getenv("LAUNCHER_SHOT");        // test hook: save a screenshot after a few frames and quit
         if (shot && ++shot_frames == 5) { SDL_Surface *sf = SDL_CreateRGBSurfaceWithFormat(0, WIN_W, WIN_H, 32, SDL_PIXELFORMAT_ARGB8888); SDL_RenderReadPixels(ren, 0, SDL_PIXELFORMAT_ARGB8888, sf->pixels, sf->pitch); SDL_SaveBMP(sf, shot); SDL_FreeSurface(sf); result = 0; }
         SDL_RenderPresent(ren);
         if (result < 0) SDL_Delay(8);
     }
-    SDL_DestroyTexture(font_tex); font_tex = 0; SDL_DestroyRenderer(ren); SDL_DestroyWindow(win);
+    free_pfonts(); SDL_DestroyRenderer(ren); SDL_DestroyWindow(win);
     return result;
 }
 #endif
