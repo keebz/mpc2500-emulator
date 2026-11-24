@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Virtual-unit install chain, run through the firmware's own installers (needs the firmware files in archive/):
   1. a new unit is created from the stock Akai OS 1.24 (the chooser's "Flash OS")
-  2. JJOS JV 3.13 is installed as MPC2500.BIN from the stock OS's Load page (the Akai OS updater)
-  3. JJOS XL 3.90 is installed from JV 3.13's Load page ("OS-XL update"); the stock OS must refuse it
-  4. the unit powers on into OS-XL
+  2. an OS that fits the OS area (and has its own installer) is installed as MPC2500.BIN from the stock OS's Load page (the Akai OS updater)
+  3. an XL OS is installed from that OS's Load page; the stock OS must refuse it
+  4. the unit powers on into the XL OS
 Checks the flash contents byte for byte against the files. Usage: python3 tests/install_chain.py   (about 2 minutes)"""
 import os, subprocess, sys, tempfile, shutil
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -44,16 +44,16 @@ try:
     jvcard = make_card(tmp, "jv", JV, "MPC2500.BIN")
     run(unit, jvcard, "tap 2 8;wait 30000000;tap 3 8;wait 1500000000;flashsave %s.s1" % unit, tmp)
     d = open(unit + ".s1", "rb").read(); jv = open(JV, "rb").read()
-    check(d[0x10000:len(jv)] == jv[0x10000:], "JV 3.13 installed by the stock OS updater: flash matches the file")
+    check(d[0x10000:len(jv)] == jv[0x10000:], "the OS with its own installer is installed by the stock OS updater: flash matches the file")
     shutil.copy(unit + ".s1", unit)
     xl2 = make_card(tmp, "xl", XL, "XL390.OSX")
     run(unit, xl2, "tap 2 8;wait 30000000;tap 3 8;wait 3500000000;flashsave %s.s2" % unit, tmp)
     d = open(unit + ".s2", "rb").read(); xl = open(XL, "rb").read()
-    check(d[0x10000:len(xl)] == xl[0x10000:], "OS-XL 3.90 installed from JV 3.13's Load page: flash matches the file")
+    check(d[0x10000:len(xl)] == xl[0x10000:], "the XL OS is installed from that OS's Load page: flash matches the file")
     shutil.copy(unit + ".s2", unit)
     _, o = run(unit, xl2, "wait 1000000;dump a", tmp)
     lcd = open(os.path.join(o, "a_a.bin"), "rb").read()
-    check(any(lcd), "unit powers on into OS-XL (display is drawn)")
+    check(any(lcd), "unit powers on into the XL OS (display is drawn)")
 finally:
     shutil.rmtree(tmp, ignore_errors=True)
 print("ALL PASSED" if ok else "FAILED"); sys.exit(0 if ok else 1)

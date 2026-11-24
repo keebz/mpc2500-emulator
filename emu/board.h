@@ -170,7 +170,7 @@ typedef struct {
     char name[128];
     char report[1024];                 // multi-line description of what was found / done
     int run_in_place;                  // "MPC2500 TEST" image: the boot block jumps straight to it, no checksum
-    int big;                           // image extends past the stock OS window (JJOS XL style)
+    int big;                           // image extends past the stock OS window (an XL OS)
 } Firmware;
 int  fw_load_file(const char *path, const char *boot_donor, Firmware *out, char *err, size_t errlen);
 void fw_free(Firmware *f);

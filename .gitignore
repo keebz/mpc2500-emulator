@@ -48,3 +48,6 @@ __pycache__/
 emu/build/
 build/
 dist/
+
+# full private engineering notes (never published)
+NOTES.local.md

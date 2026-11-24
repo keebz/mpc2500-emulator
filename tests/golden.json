@@ -2,10 +2,10 @@
  "clear_boot": {
   "main_a.bin": "d9a2c8bf47a418f3"
  },
- "jv263_boot": {
+ "xl_c_boot": {
   "main_a.bin": "a58563cbacddb164"
  },
- "jv313_boot": {
+ "fits_boot": {
   "main_a.bin": "241b4cb46cd1354c"
  },
  "kit_audio": {
@@ -20,7 +20,7 @@
   "p9_a.bin": "ce90acab877a4497",
   "p9_a.wav": "ad747b36bf7e759a"
  },
- "light100_boot": {
+ "xl_b_boot": {
   "main_a.bin": "dd41a7e1cf489787"
  },
  "pan_stereo": {
@@ -130,7 +130,7 @@
   "w5d2_a.bin": "7117f25f04aff799",
   "w9_a.bin": "53aa2aa344ffc52c"
  },
- "xl390_boot": {
+ "xl_a_boot": {
   "main_a.bin": "a0ed8cbd6adb2299"
  }
 }

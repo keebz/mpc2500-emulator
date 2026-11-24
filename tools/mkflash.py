@@ -5,7 +5,7 @@ Pads to 1 MiB with erased bytes (0xFF) and stores the boot loader's expected che
 NOTE: derived from the boot code's own validation routine (boot @0xD06-0xD86); the real updater's
 layout has not been verified on hardware."""
 import struct, sys, os
-MODE = os.environ.get('FLASH_MODE', 'safe')   # safe: image must fit the OS window (<= 0xEFFF0 bytes); full: up to 8 MiB like JJOS XL, with a footprint warning
+MODE = os.environ.get('FLASH_MODE', 'safe')   # safe: image must fit the OS window (<= 0xEFFF0 bytes); full: up to 8 MiB for XL OS images XL, with a footprint warning
 src, dst = sys.argv[1], sys.argv[2]
 d = bytearray(open(src, 'rb').read())
 if len(d) > 0xEFFF0:

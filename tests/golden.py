@@ -14,10 +14,10 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FW = os.path.join(ROOT, "archive")
 IMG = {
     "stock": os.path.join(FW, "v124", "mpc2500.bin"),
-    "jv313": os.path.join(FW, "MPC2500", "mpc2500_jv313.bin"),
-    "xl390": os.path.join(FW, "MPC2500", "mpc2500_xl390.osx"),
-    "light100": os.path.join(FW, "MPC2500", "mpc2500_light100.osx"),
-    "jv263": os.path.join(FW, "MPC2500", "mpc2500_jv263.os3"),
+    "fits": os.path.join(FW, "MPC2500", "mpc2500_jv313.bin"),
+    "xl_a": os.path.join(FW, "MPC2500", "mpc2500_xl390.osx"),
+    "xl_b": os.path.join(FW, "MPC2500", "mpc2500_light100.osx"),
+    "xl_c": os.path.join(FW, "MPC2500", "mpc2500_jv263.os3"),
     "clear": os.path.join(FW, "clear", "mpc2500_v124_clear_internal.bin"),
 }
 KIT_PRELUDE = ("tap 0 3;wait 20000000;padhit 2 100;wait 30000000;tap 2 8;wait 30000000;tap 3 8;wait 1600000000;"
@@ -60,8 +60,8 @@ def scenarios():
     s.append(dict(name="qlink_filter", img="stock", boot=300_000_000, prelude=KIT_PRELUDE,
                   forks={"open": flt + sld + "qlink 3 1000;wait 30000000;" + hit5, "closed": flt + sld + "qlink 3 1000;wait 30000000;qlink 3 0;wait 30000000;" + hit5},
                   differ=[("open_a.wav", "closed_a.wav")]))
-    s.append(dict(name="jv313_boot", img="jv313", boot=300_000_000, forks={"main": "wait 1000000;dump a"}))
-    for k in ("xl390", "light100", "jv263"):
+    s.append(dict(name="fits_boot", img="fits", boot=300_000_000, forks={"main": "wait 1000000;dump a"}))
+    for k in ("xl_a", "xl_b", "xl_c"):
         s.append(dict(name=k + "_boot", img=k, boot=400_000_000, env={"FLASH_MODE": "full"}, forks={"main": "wait 1000000;dump a"}))
     s.append(dict(name="clear_boot", img="clear", boot=300_000_000, forks={"main": "wait 1000000;dump a"}))
     return s

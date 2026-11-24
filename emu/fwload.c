@@ -1,10 +1,10 @@
 // Firmware loading: turns a user-supplied file into a flash image the boot block accepts.
 //
 // Formats, recognised by content (the extension is only a hint):
-//   build  "MPC2500 ..." header at 0x10000, boot block at 0-0xFFFF, <= 0xEFFF0 bytes (Akai's mpc2500.bin, JJOS .bin builds). The boot
+//   build  "MPC2500 ..." header at 0x10000, boot block at 0-0xFFFF, <= 0xEFFF0 bytes (Akai's mpc2500.bin and other OS builds). The boot
 //          block only starts an OS whose 16-bit word checksum over [0x10000, 0xEFFF0) is stored at 0xEFFF0; the real updater writes it,
 //          so the loader computes and stores it.
-//   test   "MPC2500 TEST" header at 0x10000 (JJOS XL / Light / OS3 .osx/.os3): the boot block runs it in place, no checksum, and it may
+//   test   "MPC2500 TEST" header at 0x10000 (XL OS images, .osx/.os3): the boot block runs it in place, no checksum, and it may
 //          span up to 8 MiB of flash.
 //   sos    OS-only payload (MPC2500.SOS = build[0x10000:]): needs a boot block, taken from a full build named as the donor.
 //   dump   exactly 8 MiB: a whole-flash image, used unchanged.
