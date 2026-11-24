@@ -12,8 +12,8 @@
 
 // ---- timing --------------------------------------------------------------------------------------------------------
 // One emulated instruction = 1/CPU_HZ second. Calibrated against the stock OS: its TMU clock gives 1 ms = 1662 TMU0 ticks,
-// and one audio frame (44.1 kHz) is steps_per_frame instructions (default 1900: the stock OS needs >1650 per frame or its audio interrupt is missed).
-extern uint32_t steps_per_frame;       // emulated instructions per 44.1 kHz audio frame (default 1900); the instruction rate is 44100 x this
+// and one audio frame (44.1 kHz) is steps_per_frame instructions (default 1500 = 66.15 M instr/s; the OS needs far less on average, and late audio requests are queued).
+extern uint32_t steps_per_frame;       // emulated instructions per 44.1 kHz audio frame (default 1500); the instruction rate is 44100 x this
 #define CPU_HZ (44100ull * steps_per_frame)
 #define STEPS_PER_FRAME steps_per_frame
 #define BATCH 64                       // instructions between peripheral/interrupt service points

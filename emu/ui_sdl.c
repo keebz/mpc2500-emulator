@@ -98,7 +98,8 @@ static void thick_line(SDL_Renderer *ren, float x0, float y0, float x1, float y1
 static void fill_rect_a(SDL_Renderer *ren, SDL_Rect r, int inset, Uint8 R, Uint8 G, Uint8 B, Uint8 A) {
     r.x += inset; r.y += inset; r.w -= 2 * inset; r.h -= 2 * inset; SDL_SetRenderDrawColor(ren, R, G, B, A); SDL_RenderFillRect(ren, &r);
 }
-static volatile int au_peak, au_under, au_fill; static volatile double au_rate = 1.0;
+static FILE *au_dump;
+static volatile int au_peak, au_under, au_fill, au_dry; static volatile double au_rate = 1.0;
 // Audio output follows the emulator: the emulation thread fills a ring with 44.1 kHz stereo frames and the callback plays them 1:1 (exact
 // pitch). Only if the host cannot emulate in real time (the ring drains well below its target) the playback rate is lowered smoothly, so the
 // sound slows slightly instead of breaking up; the rate is derived from a slowly averaged fill level with a wide dead band, so ordinary
@@ -112,49 +113,55 @@ static double soft_limit(double x) {
 }
 static void audio_cb(void *u, Uint8 *stream, int len) {
     (void)u; int16_t *o = (int16_t *)stream; int n = len / 4;
-    static uint32_t cur, nxt; static double pos, avg = -1, rate_now = 1.0; static int primed, playing;
-    const double low = 1200.0, high = 12000.0;                              // anywhere between is fine: a steady fill level plays at exactly 1.0
+    static uint32_t cur, nxt; static double pos, avg = -1, rate_now = 1.0; static int primed, playing, dry_run;
+    // Rate control: anywhere between `low` and `high` queued frames the sound plays at exactly 1.0 (no pitch change at all). Only when the queue runs
+    // close to empty (a host too slow to emulate in real time) is playback slowed in proportion, so it plays flat instead of dropping out.
+    const double low = 1000.0, high = 14000.0;
     double fill = (double)audio_live_fill(); au_fill = (int)fill;
     if (avg < 0) avg = fill;
-    avg += (fill - avg) * 0.08;
+    avg += (fill - avg) * 0.03;
     double want = 1.0;
-    if (avg < low) want = 1.0 - 0.5 * (low - avg) / low;                  // nearly empty: slow down so it never runs dry
-    else if (avg > high) want = 1.0 + 0.15 * (avg - high) / high;         // far too much queued (latency): catch up gently
-    if (want < 0.5) want = 0.5; if (want > 1.1) want = 1.1;
-    // Cushion: playback starts only once ~70 ms are queued, and restarts the same way after a run-dry (a short silence instead of stuttering).
+    if (avg < low) want = 1.0 - 0.5 * (low - avg) / low;
+    else if (avg > high) want = 1.0 + 0.2 * (avg - high) / high;
+    if (want < 0.6) want = 0.6; if (want > 1.1) want = 1.1;
+    // Cushion: playback starts only once ~110 ms are queued, and restarts the same way after a run-dry (a short silence instead of stuttering); brief gaps just repeat the last frame.
     if (!playing) {
-        if (fill >= 3000) { playing = 1; primed = 0; avg = fill; } else { memset(stream, 0, (size_t)len); return; }
+        if (fill >= 4500) { playing = 1; primed = 0; avg = fill; } else { memset(stream, 0, (size_t)len); if (au_dump) fwrite(stream, 1, (size_t)len, au_dump); return; }
     }
     if (!primed) { audio_live_pop(&cur); audio_live_pop(&nxt); primed = 1; pos = 0; }
     for (int i = 0; i < n; i++) {
         rate_now += (want - rate_now) * 0.0005;                          // glide between rates, never jump
         if (want == 1.0 && fabs(rate_now - 1.0) < 0.002) rate_now = 1.0;
         pos += rate_now;
-        while (pos >= 1.0) { pos -= 1.0; cur = nxt; if (!audio_live_pop(&nxt)) { au_under++; playing = 0; pos = 0; break; } }
+        while (pos >= 1.0) { pos -= 1.0; cur = nxt; if (!audio_live_pop(&nxt)) { au_under++; if (++dry_run > 4410) { au_dry++; playing = 0; dry_run = 0; } pos = 0; break; } dry_run = 0; }
         double f = pos;
         double l = (int16_t)(cur >> 16) * (1 - f) + (int16_t)(nxt >> 16) * f, r = (int16_t)(cur & 0xFFFF) * (1 - f) + (int16_t)(nxt & 0xFFFF) * f;
         l = soft_limit(l * 2.0); r = soft_limit(r * 2.0);                  // x2 make-up gain (the default output shift is 4 = DAC full scale)
         int pk = (int)fabs(l); if (pk > au_peak) au_peak = pk;
         o[2 * i] = (int16_t)l; o[2 * i + 1] = (int16_t)r; au_rate = rate_now;
     }
+    if (au_dump) fwrite(stream, 1, (size_t)len, au_dump);
 }
 
 // ---- emulation thread: runs the board against the wall clock while the UI thread draws and handles input ----
 static SDL_mutex *emu_lock; static volatile int emu_alive = 1, ui_waiting, ff_mode;
 static volatile uint64_t emu_t0_ticks, emu_base_cycles; static volatile int reset_requested;
 static int emu_thread(void *unused) {
-    (void)unused; const uint64_t freq = SDL_GetPerformanceFrequency();
+    (void)unused; const uint64_t freq = SDL_GetPerformanceFrequency(); uint64_t prev_it = SDL_GetPerformanceCounter(); const int dbg = getenv("AUDIO_DEBUG") != 0;
     while (emu_alive) {
+        uint64_t t_a = SDL_GetPerformanceCounter();
         SDL_LockMutex(emu_lock);
+        uint64_t t_b = SDL_GetPerformanceCounter();
         if (reset_requested) { board_reset(); emu_base_cycles = cpu.cycles; emu_t0_ticks = SDL_GetPerformanceCounter(); reset_requested = 0; printf("-- power cycle --\n"); fflush(stdout); }
         uint64_t elapsed = SDL_GetPerformanceCounter() - emu_t0_ticks;
-        // the emulation stays ~120 ms of emulated time ahead of the wall clock so the audio ring always holds a cushion (no underruns from scheduling jitter)
-        uint64_t target = (uint64_t)(((double)elapsed / (double)freq * (ff_mode ? 8 : 1) + 0.12) * (double)CPU_HZ);
+        // the emulation stays ~200 ms of emulated time ahead of the wall clock so the audio ring always holds a cushion (no underruns from scheduling jitter)
+        uint64_t target = (uint64_t)(((double)elapsed / (double)freq * (ff_mode ? 8 : 1) + 0.20) * (double)CPU_HZ);
         uint64_t done = cpu.cycles - emu_base_cycles, budget = target > done ? target - done : 0;
         if (budget > 300000) budget = 300000;
         if (budget > 20000 || ff_mode) board_run(budget); else budget = 0;
         if (target > done + 40000000) { emu_base_cycles = cpu.cycles - target + 8000000; }     // far behind (e.g. the window was dragged): drop the backlog
         SDL_UnlockMutex(emu_lock);
+        if (dbg) { uint64_t t_c = SDL_GetPerformanceCounter(); double gap = (double)(t_c - prev_it) / (double)freq, lockw = (double)(t_b - t_a) / (double)freq, run = (double)(t_c - t_b) / (double)freq; if (gap > 0.025) fprintf(stderr, "EMU STALL: iteration gap %.1f ms (lock wait %.1f ms, run %.1f ms, budget %llu)\n", gap * 1e3, lockw * 1e3, run * 1e3, (unsigned long long)budget); prev_it = t_c; }
         if (ui_waiting) { while (ui_waiting && emu_alive) SDL_Delay(0); }
         if (!budget) SDL_Delay(1);
     }
@@ -201,9 +208,21 @@ int ui_run(const char *skin_dir, const char *keymap) {
     uint32_t pix[LCD_W * LCD_H]; uint64_t frames = 0;
     emu_lock = SDL_CreateMutex(); emu_t0_ticks = SDL_GetPerformanceCounter(); emu_base_cycles = cpu.cycles;
     SDL_Thread *emu_th = SDL_CreateThread(emu_thread, "emulation", 0);
+    if (getenv("AUDIO_DUMP")) au_dump = fopen(getenv("AUDIO_DUMP"), "wb");
+    const char *live_ev = getenv("LIVE_EVENTS");       // test hook: "frame:d|u:KeyName;..." injects key events at given frames
     int inj_f = -1, inj_n = 0; if (getenv("LIVE_WHEEL")) sscanf(getenv("LIVE_WHEEL"), "%d,%d", &inj_f, &inj_n);   // test hook: inject a mouse-wheel event at a frame
     while (running) {
         SDL_Event e;
+        if (live_ev) {
+            const char *q = live_ev;
+            while (*q) {
+                int fr = 0, k = 0; char dir = 0; char name[64] = "";
+                if (sscanf(q, "%d:%c:%63[^;]%n", &fr, &dir, name, &k) >= 3 && (uint64_t)fr == frames) {
+                    SDL_Event ke; memset(&ke, 0, sizeof ke); ke.type = dir == 'd' ? SDL_KEYDOWN : SDL_KEYUP; ke.key.keysym.sym = SDL_GetKeyFromName(name); SDL_PushEvent(&ke);
+                }
+                const char *nx = strchr(q, ';'); if (!nx) break; q = nx + 1;
+            }
+        }
         if (inj_f >= 0 && (int)frames == inj_f) { SDL_Event w; memset(&w, 0, sizeof w); w.type = SDL_MOUSEWHEEL; w.wheel.y = inj_n; SDL_PushEvent(&w); inj_f = -1; }
         ui_waiting = 1; SDL_LockMutex(emu_lock); ui_waiting = 0;
         while (SDL_PollEvent(&e)) {
@@ -309,6 +328,7 @@ int ui_run(const char *skin_dir, const char *keymap) {
         }
         SDL_RenderPresent(ren);
         if (headless) SDL_Delay(16);                       // no vsync on the dummy driver: keep ~60 frames/s
+        if (getenv("AUDIO_DEBUG") && au_dry) { fprintf(stderr, "audio: RAN DRY (%d) at wall %.3fs, emu lead %.3fs, fill %d\n", au_dry, (double)(SDL_GetPerformanceCounter() - emu_t0_ticks) / SDL_GetPerformanceFrequency(), (double)(cpu.cycles - emu_base_cycles) / CPU_HZ - (double)(SDL_GetPerformanceCounter() - emu_t0_ticks) / SDL_GetPerformanceFrequency(), au_fill); au_dry = 0; }
         if (getenv("AUDIO_DEBUG") && frames % 60 == 0) { fprintf(stderr, "audio: peak %d underruns %d fill %d rate %.4f  emu %.3fs wall %.3fs produced %u consumed ~%u\n", au_peak, au_under, au_fill, au_rate, (double)(cpu.cycles - emu_base_cycles) / CPU_HZ, (double)(SDL_GetPerformanceCounter() - emu_t0_ticks) / SDL_GetPerformanceFrequency(), audio_live_total(), audio_live_total() - audio_live_fill()); au_peak = au_under = 0; }
         if (++frames % 15 == 0) {
             char t[200]; const char *lab = hover_c >= 0 ? cell_label[hover_c][hover_r] : "";
@@ -317,7 +337,7 @@ int ui_run(const char *skin_dir, const char *keymap) {
             SDL_SetWindowTitle(win, t);
         }
     }
-    emu_alive = 0; SDL_WaitThread(emu_th, 0);
+    emu_alive = 0; SDL_WaitThread(emu_th, 0); if (au_dump) fclose(au_dump);
     SDL_Quit();
     return 0;
 }

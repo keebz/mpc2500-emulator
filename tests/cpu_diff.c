@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
     uint32_t in[IN_WORDS], out[OUT_WORDS];
     for (uint32_t k = 0; k < n; k++) {
         if (fread(in, 4, IN_WORDS, fi) != IN_WORDS) return 2;
-        SH3 c; sh3_reset(&c); c.bus = (Bus){ bus_read, bus_write, 0 };
+        SH3 c; memset(&c, 0, sizeof c); sh3_reset(&c); c.bus = (Bus){ bus_read, bus_write, 0 };
         memcpy(c.r, in, 64); memcpy(c.bank, in + 16, 32);
         c.pc = in[24]; c.pr = in[25]; c.gbr = in[26]; c.vbr = in[27]; c.mach = in[28]; c.macl = in[29]; c.sr = in[30]; c.ssr = in[31]; c.spc = in[32];
         c.tra = in[33]; c.expevt = 0;

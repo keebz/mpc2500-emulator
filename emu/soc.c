@@ -11,7 +11,7 @@ uint64_t soc_irq_count, siof_frames, dmac_done;
 unsigned siof_irq_div = 1;
 
 static uint32_t intevt2;                                   // INTEVT2 @ 0xA4000000: code of the interrupt that entered the 0x600 vector
-uint32_t steps_per_frame = 1900;
+uint32_t steps_per_frame = 1500;
 int soc_irq_blocked;                   // an interrupt is waiting only for BL / a DSP repeat loop to end: run short batches until it can be taken
 static uint64_t last_cycles, frame_next, next_pad_refresh;
 static int txi_pending;
@@ -137,18 +137,26 @@ static int adc_irq_ready(void) {                         // ADI: ADF = 1 and ADI
     if ((cpu.sr & SR_BL) || ((cpu.sr >> 16) & 0xFFF) || cpu.loop_pending) { soc_irq_blocked = 1; return 0; }
     return 1;
 }
-static int dei0_pending_unused;
+// DMAC channel 0 serves the SIOF receive requests: one request per frame. If the channel is not armed when a request arrives (the interrupt handler is
+// late re-arming it), the request waits (the SIOF receive FIFO holds a few frames) and is served as soon as the channel is armed again; only after a
+// backlog of 8 are requests dropped.
+static int dma_req;
+static void try_dma(void) {
+    while (dma_req > 0) {
+        uint32_t chcr = rd32(&soc_lo[0x2C]), tcr = rd32(&soc_lo[0x28]) & 0xFFFFFF, dar = rd32(&soc_lo[0x24]);
+        if (!((chcr & 1) && !(chcr & 2) && tcr)) return;                      // DE = 1, TE = 0, count > 0
+        for (uint32_t i = 0; i < tcr; i++) { bus_write(0, dar, 0, 4); dar += 4; }      // no audio input connected: frames of silence
+        wr32(&soc_lo[0x24], dar); wr32(&soc_lo[0x28], 0); wr32(&soc_lo[0x2C], chcr | 2); dmac_done++;
+        dma_req--;
+    }
+}
 static void siof_frame(void) {
     siof_frames++;
-    if ((siof_frames % siof_irq_div) == 0) txi_pending = 1;
     if ((siof_frames % siof_irq_div) == 0) {
-        uint32_t chcr = rd32(&soc_lo[0x2C]), tcr = rd32(&soc_lo[0x28]) & 0xFFFFFF, dar = rd32(&soc_lo[0x24]);
-        if ((chcr & 1) && !(chcr & 2) && tcr) {                              // DE = 1, TE = 0, count > 0
-            for (uint32_t i = 0; i < tcr; i++) { bus_write(0, dar, 0, 4); dar += 4; }      // no audio input connected: frames of silence
-            wr32(&soc_lo[0x24], dar); wr32(&soc_lo[0x28], 0); wr32(&soc_lo[0x2C], chcr | 2); dmac_done++;
-        }
+        if (txi_pending < 8) txi_pending++;      // a late interrupt is queued (the SIOF FIFO absorbs a few frames of latency), not lost
+        if (dma_req < 8) dma_req++;
     }
-    (void)dei0_pending_unused;
+    try_dma();
 }
 static int dsp_loop_active(void) { return cpu.loop_pending || ((cpu.sr >> 16) & 0xFFF); }
 static int siof_txi_ready(void) {
@@ -157,7 +165,7 @@ static int siof_txi_ready(void) {
     int pri = rd16(&soc_lo[0x220]) & 15, imask = (cpu.sr >> 4) & 15;
     if (pri <= imask) return 0;
     if ((cpu.sr & SR_BL) || dsp_loop_active()) { soc_irq_blocked = 1; return 0; }
-    txi_pending = 0; return 1;
+    txi_pending--; return 1;
 }
 static int siof_dei0_ready(void) {
     if ((rd32(&soc_lo[0x2C]) & 6) != 6) return 0;                            // DEI0 is level triggered: CHCR.TE = 1 and CHCR.IE = 1
@@ -174,6 +182,7 @@ void soc_service(void) {
     if (cpu.cycles >= next_pad_refresh) { next_pad_refresh = cpu.cycles + 50000; pads_apply(); }
     panel_wheel_service();
     adc_service();
+    try_dma();
     while (cpu.cycles >= frame_next) { frame_next += STEPS_PER_FRAME; siof_frame(); }
     // Module interrupts (INTEVT = level code H'200 + 20*(15-level), INTEVT2 = source code). The highest priority level wins; ties go to the
     // order DMAC, ADC, SIOF. TMU interrupts are handled above (their INTEVT is the fixed source code).
@@ -196,7 +205,7 @@ void soc_dump_intc(void) {
 void soc_reset(void) {
     memset(soc_lo, 0, sizeof soc_lo); memset(soc_hi, 0, sizeof soc_hi); memset(adc10, 0, sizeof adc10); adc_running = 0; soc_lo[0x92] = 0x07;
     memset(tmu_acc, 0, sizeof tmu_acc);
-    intevt2 = 0; last_cycles = 0; frame_next = STEPS_PER_FRAME; next_pad_refresh = 0; txi_pending = 0;
+    intevt2 = 0; last_cycles = 0; frame_next = STEPS_PER_FRAME; next_pad_refresh = 0; txi_pending = 0; dma_req = 0;
     siof_frames = dmac_done = soc_irq_count = 0;
     i2c.pscl = 1; i2c.psda_host = 1; i2c.slow = i2c.mode = i2c.bits = i2c.ptr = 0;
 }

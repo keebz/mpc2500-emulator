@@ -106,7 +106,7 @@ void sh3_interrupt(SH3 *c, uint32_t evt) {
 static void exec_slot(SH3 *c, uint16_t op, uint32_t pc);
 #define EXEC_INLINE static inline __attribute__((always_inline))
 int dsp_exec_parallel(SH3 *c, uint16_t h, uint16_t alu);
-int dsp_trace_n; uint32_t dsp_trace_lo = 0xA5008D00, dsp_trace_hi = 0xA5008F00;
+int setrc_log; int dsp_trace_n; uint32_t dsp_trace_lo = 0xA5008D00, dsp_trace_hi = 0xA5008F00;
 
 /* ---- SH3-DSP register access helpers (Ds/Dn codes: 5=A1 7=A0 8=X0 9=X1 A=Y0 B=Y1 C=M0 E=M1, D=A1G F=A0G) ---- */
 static uint32_t *dsp_reg32(SH3 *c, int code) {
@@ -347,7 +347,7 @@ EXEC_INLINE void exec(SH3 *c, uint16_t op, uint32_t pc) {
         case 0x1B: v = RD8(R[n]); SETT(v == 0); WR8(R[n], v | 0x80); return;                // TAS.B
         case 0x2B: delay(c, R[n], pc); return;                                              // JMP
         case 0x0B: c->pr = pc + 4; delay(c, R[n], pc); return;                              // JSR
-        case 0x14: DSPON(); c->sr = (c->sr & ~0x0FFF0000u) | ((R[n] & 0xFFFu) << 16); return;   // SETRC Rm
+        case 0x14: DSPON(); if (setrc_log) printf("SETRC Rm pc=%08x rc=%u rs=%08x re=%08x r%d=%08x\n", pc, R[n] & 0xFFF, c->rs, c->re, n, R[n]); c->sr = (c->sr & ~0x0FFF0000u) | ((R[n] & 0xFFFu) << 16); return;   // SETRC Rm
         }
         {   // control / system register loads and stores, selected by the low nibble; bits 7:4 pick the register
             const int g = m, lsb = op & 15;
@@ -416,7 +416,7 @@ EXEC_INLINE void exec(SH3 *c, uint16_t op, uint32_t pc) {
         switch (n) {
         case 0: WR8(R[m] + (uint32_t)d, R[0]); return;
         case 1: WR16(R[m] + (uint32_t)d * 2, R[0]); return;
-        case 2: DSPON(); c->sr = (c->sr & ~0x0FFF0000u) | (i << 16); return;                               // SETRC #imm
+        case 2: DSPON(); if (setrc_log) printf("SETRC #  pc=%08x rc=%u rs=%08x re=%08x\n", pc, i, c->rs, c->re); c->sr = (c->sr & ~0x0FFF0000u) | (i << 16); return;                               // SETRC #imm
         case 4: R[0] = (uint32_t)S8(RD8(R[m] + (uint32_t)d)); return;
         case 5: R[0] = (uint32_t)S16(RD16(R[m] + (uint32_t)d * 2)); return;
         case 8: SETT(R[0] == (uint32_t)S8(i)); return;
@@ -482,20 +482,26 @@ EXEC_INLINE void exec(SH3 *c, uint16_t op, uint32_t pc) {
     }
 }
 
-static __attribute__((noinline)) void loop_step(SH3 *c) {   // DSP repeat loop (manual 5.12/Table 5.23): loops of >= 4 instructions have RE = (instruction n-3)+4 and loop back after the last instruction
+// Starts counting a repeat pass when the next instruction (c->pc) is where the hardware arms the loop (manual Table 5.23): 1-3 instruction loops
+// are armed at their first instruction (pc == RE); loops of >= 4 instructions three instructions before the last one (pc + 4 == RE).
+static void loop_arm(SH3 *c) {
+    if (!((c->sr >> 16) & 0xFFF)) return;
+    int32_t d = (int32_t)(c->rs - c->re);                   // Table 5.23: RS-RE = 4 -> 1-instruction loop, 2 -> 2 instructions, 0 -> 3, otherwise >= 4
+    if (d == 4 || d == 2 || d == 0) {
+        if (c->pc != c->re) return;
+        if (d == 4) { c->loop_pending = 1; c->loop_target = c->re; }
+        else if (d == 2) { c->loop_pending = 2; c->loop_target = c->re; }
+        else { c->loop_pending = 3; c->loop_target = c->rs; }
+    } else if (c->pc + 4 == c->re) { c->loop_pending = 4; c->loop_target = c->rs; }
+}
+static __attribute__((noinline)) void loop_step(SH3 *c) {   // DSP repeat loop (manual 5.12): called after every instruction while RC != 0 or a pass is being counted
     uint32_t rc = (c->sr >> 16) & 0xFFF;
     if (c->loop_pending > 0) {
-        if (--c->loop_pending == 0) { if (rc > 1) { c->sr = (c->sr & ~0x0FFF0000u) | ((rc - 1) << 16); c->pc = c->loop_target; } else c->sr &= ~0x0FFF0000u; }
-    } else if (rc && (c->pc == c->re || c->pc + 4 == c->re)) {
-        int32_t d = (int32_t)(c->rs - c->re);                   // Table 5.23: RS-RE = 4 -> 1-instruction loop, 2 -> 2 instructions, 0 -> 3, RS<RE -> >=4
-        if (d == 4 || d == 2 || d == 0) {
-            if (c->pc == c->re) {
-                if (d == 4) { c->loop_pending = 1; c->loop_target = c->re; }
-                else if (d == 2) { c->loop_pending = 2; c->loop_target = c->re; }
-                else { c->loop_pending = 3; c->loop_target = c->rs; }
-            }
-        } else if (c->pc + 4 == c->re) { c->loop_pending = 4; c->loop_target = c->rs; }
-    }
+        if (--c->loop_pending == 0) {
+            if (rc > 1) { c->sr = (c->sr & ~0x0FFF0000u) | ((rc - 1) << 16); c->pc = c->loop_target; loop_arm(c); }   // back to the start: the next pass may be armed right here
+            else c->sr &= ~0x0FFF0000u;
+        }
+    } else if (rc) loop_arm(c);
 }
 
 static __attribute__((noinline)) void exec_slot(SH3 *c, uint16_t op, uint32_t pc) { exec(c, op, pc); }

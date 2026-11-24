@@ -51,6 +51,10 @@ void script_run(const char *text, const char *outdir, const char *name) {
         else if (!strcmp(cmd, "wait")) { sscanf(tok, " %*s %llu", &n); board_run(n); }
         else if (!strcmp(cmd, "wheel")) { wheel_turn(a >= 0 ? (b ? b : 1) : -(b ? b : 1)); wait_wheel(); }
         else if (!strcmp(cmd, "pad")) pad_down(a, b ? b : 100);
+        else if (!strcmp(cmd, "dsptrace")) { extern int dsp_trace_n; extern uint32_t dsp_trace_lo, dsp_trace_hi; dsp_trace_n = (int)(a ? a : 200); dsp_trace_lo = 0xA5000000u; dsp_trace_hi = 0xA5020000u; if (b == 1 || b == 2) { extern int setrc_log; setrc_log = b; dsp_trace_n = 0; } }
+        else if (!strcmp(cmd, "memdump")) { unsigned long long ad = 0, ln = 0; sscanf(tok, " %*s %llx %llu", &ad, &ln); char p[400]; path_for(p, sizeof p, "mem", "bin"); FILE *mf = fopen(p, "wb"); if (mf) { for (unsigned long long k = 0; k < ln; k += 4) { uint32_t w = bus_peek32((uint32_t)(ad + k)); fwrite(&w, 4, 1, mf); } fclose(mf); } }
+        else if (!strcmp(cmd, "audiocount")) { static uint32_t last; audio_live_enable(1); uint32_t tot = audio_live_total(); printf("AUDIOCOUNT +%u\n", tot - last); last = tot; }
+        else if (!strcmp(cmd, "dsphist")) { extern uint64_t dsp_hist[256]; printf("DSPHIST"); for (int i = 0; i < 256; i++) if (dsp_hist[i]) printf(" %02x:%llu", i, (unsigned long long)dsp_hist[i]); printf("\n"); memset(dsp_hist, 0, sizeof(uint64_t) * 256); }
         else if (!strcmp(cmd, "padup")) pad_up(a);
         else if (!strcmp(cmd, "padhit")) { pad_down(a, b ? b : 100); board_run(4000000); pad_up(a); board_run(6000000); }
         else if (!strcmp(cmd, "adc")) { int ch = 0, val = 0; sscanf(tok, " %*s %d %d %d", &a, &ch, &val); adc10[a & 3][ch & 3] = (uint16_t)(val << 2); }
