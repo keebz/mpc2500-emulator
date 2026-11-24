@@ -117,9 +117,13 @@ static double soft_limit(double x) {
     double y = knee + head * tanh((ax - knee) / head);
     return x < 0 ? -y : y;
 }
+// MAIN VOLUME: on the unit this is an analogue pot in the output stage (not read by the CPU), so it scales the emulated output here. Audio taper (squared);
+// the default knob position (75) gives the level the live output had before the knob was connected, 100 is about 5 dB louder, 0 is silent.
+static volatile int au_volume = 75;
+static double vol_gain(int v) { double x = v / 75.0; return x * x; }
 static void audio_cb(void *u, Uint8 *stream, int len) {
     (void)u; int16_t *o = (int16_t *)stream; int n = len / 4;
-    static uint32_t cur, nxt; static double pos, avg = -1, rate_now = 1.0; static int primed, playing, dry_run;
+    static uint32_t cur, nxt; static double pos, avg = -1, rate_now = 1.0, gain_now = -1; static int primed, playing, dry_run;
     // Rate control: anywhere between `low` and `high` queued frames the sound plays at exactly 1.0 (no pitch change at all). Only when the queue runs
     // close to empty (a host too slow to emulate in real time) is playback slowed in proportion, so it plays flat instead of dropping out.
     const double low = 1000.0, high = 14000.0;
@@ -142,7 +146,7 @@ static void audio_cb(void *u, Uint8 *stream, int len) {
         while (pos >= 1.0) { pos -= 1.0; cur = nxt; if (!audio_live_pop(&nxt)) { au_under++; if (++dry_run > 4410) { au_dry++; playing = 0; dry_run = 0; } pos = 0; break; } dry_run = 0; }
         double f = pos;
         double l = (int16_t)(cur >> 16) * (1 - f) + (int16_t)(nxt >> 16) * f, r = (int16_t)(cur & 0xFFFF) * (1 - f) + (int16_t)(nxt & 0xFFFF) * f;
-        l = soft_limit(l * 2.0); r = soft_limit(r * 2.0);                  // x2 make-up gain (the default output shift is 4 = DAC full scale)
+        { double gt = vol_gain(au_volume); if (gain_now < 0) gain_now = gt; gain_now += (gt - gain_now) * 0.002; l = soft_limit(l * 2.0 * gain_now); r = soft_limit(r * 2.0 * gain_now); }                  // x2 make-up gain (the default output shift is 4 = DAC full scale)
         int pk = (int)fabs(l); if (pk > au_peak) au_peak = pk;
         o[2 * i] = (int16_t)l; o[2 * i + 1] = (int16_t)r; au_rate = rate_now;
     }
@@ -234,9 +238,10 @@ int ui_run(const char *skin_dir, const char *keymap) {
             }
         }
         if (getenv("LIVE_DROP") && (int)frames == atoi(getenv("LIVE_DROP"))) { SDL_Event de; memset(&de, 0, sizeof de); de.type = SDL_DROPFILE; de.drop.file = SDL_strdup(strchr(getenv("LIVE_DROP"), ':') + 1); SDL_PushEvent(&de); }   // test hook: "frame:/path"
+        au_volume = mainvol_v;
         if (getenv("LIVE_QSET")) {                       // test hook: "frame:Qn:value;..." moves a Q-Link control at a given frame
             const char *q = getenv("LIVE_QSET");
-            while (*q) { int fr, qi, val; if (sscanf(q, "%d:%d:%d", &fr, &qi, &val) == 3 && (uint64_t)fr == frames && qi >= 1 && qi <= 4) qv[qi] = val; const char *nx = strchr(q, ';'); if (!nx) break; q = nx + 1; }
+            while (*q) { int fr, qi, val; if (sscanf(q, "%d:%d:%d", &fr, &qi, &val) == 3 && (uint64_t)fr == frames && qi >= 1 && qi <= 6) { if (qi <= 4) qv[qi] = val; else if (qi == 5) mainvol_v = val; else recgain_v = val; } const char *nx = strchr(q, ';'); if (!nx) break; q = nx + 1; }
         }
         if (inj_f >= 0 && (int)frames == inj_f) { SDL_Event w; memset(&w, 0, sizeof w); w.type = SDL_MOUSEWHEEL; w.wheel.y = inj_n; SDL_PushEvent(&w); inj_f = -1; }
         ui_waiting = 1; SDL_LockMutex(emu_lock); ui_waiting = 0;
