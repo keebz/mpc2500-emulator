@@ -73,6 +73,7 @@ int main(int argc, char **argv) {
         else { fprintf(stderr, "unknown or incomplete option: %s (try --help)\n", a); return 2; }
     }
     if (mode == M_EXP || mode == M_SWEEP) headless = 1;
+    const int card_given = card_path != 0;            // --card or CARD=: an explicit choice that the chooser does not override
     (void)want_live;
 
     char err[400] = "", path_buf[600], skin_buf[600], key_buf[600], card_buf[700], fw_dir_buf[700];
@@ -122,7 +123,7 @@ int main(int argc, char **argv) {
             return 0;
         }
         if (ok == 0) { for (int i = 0; i < n; i++) if (list_e[i].ok) pick_i = i; if (pick_i >= 0) ok = 1; }
-        if (n <= 0 || ok != 1) {
+        if (n <= 0 || ok != 1 || (window_mode && appm)) {      // the packaged app always shows the chooser (even with one firmware), so the card options stay reachable
             if (window_mode) need_pick = 1;
             else if (n == 0) { fprintf(stderr, "no firmware found in '%s'. Put an MPC2500 firmware file (.bin / .osx / .os3 / .sos) there.\n", fw_dir); return 2; }
             else {
@@ -158,6 +159,12 @@ int main(int argc, char **argv) {
         break;
     }
     }                                                                              // end of the choose-and-load loop
+    if (appm && !card_given) {           // the chooser may have built / chosen / ejected a card after the settings were first read: use the current choice
+        char saved[600], dflt[700]; FILE *t; card_path = 0;
+        if (app_setting_get("card", saved, sizeof saved) && !strcmp(saved, "none")) card_path = 0;
+        else if (app_setting_get("card", saved, sizeof saved) && (t = fopen(saved, "rb"))) { fclose(t); card_path = strdup(saved); }
+        else { snprintf(dflt, sizeof dflt, "%s/card/card.img", app_user_dir()); if ((t = fopen(dflt, "rb"))) { fclose(t); card_path = strdup(dflt); } }
+    }
     if (!card_path && !appm) { FILE *t = fopen("card/card.img", "rb"); if (t) { fclose(t); card_path = "card/card.img"; } }
     if (card_path) {
         if (card_attach_file(card_path) != 0) fprintf(stderr, "warning: cannot read card image %s; running without a card\n", card_path);

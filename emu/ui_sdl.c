@@ -183,6 +183,46 @@ static int emu_thread(void *unused) {
 static int qlink_map[4] = { 1, 2, 3, 0 };
 static int in_rect(const SDL_Rect *r, int x, int y) { return x >= r->x && x < r->x + r->w && y >= r->y && y < r->y + r->h; }
 
+// ---------------------------------------------------------------- toolbar and cheat sheet
+void ui_draw_text(SDL_Renderer *r, int x, int y, int scale, SDL_Color c, const char *s);        // launcher.c
+static int show_help;
+static SDL_Rect tb_help = { 826, 27, 104, 20 }, tb_fw = { 938, 27, 136, 20 };                      // buttons on the top bezel, in panel units
+static void draw_toolbar(SDL_Renderer *ren, int hx, int hy) {
+    SDL_Color fg = { 200, 205, 215, 255 };
+    struct { SDL_Rect r; const char *l; } b[2] = { { tb_help, "Cheat Sheet" }, { tb_fw, "Firmware / Card" } };
+    for (int i = 0; i < 2; i++) {
+        int hot = in_rect(&b[i].r, hx, hy);
+        SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND); SDL_SetRenderDrawColor(ren, hot ? 90 : 52, hot ? 100 : 56, hot ? 60 : 64, 235); SDL_RenderFillRect(ren, &b[i].r);
+        SDL_SetRenderDrawColor(ren, 110, 116, 128, 255); SDL_RenderDrawRect(ren, &b[i].r);
+        ui_draw_text(ren, b[i].r.x + (b[i].r.w - (int)strlen(b[i].l) * 8) / 2, b[i].r.y + 2, 1, fg, b[i].l);
+    }
+}
+static void draw_cheatsheet(SDL_Renderer *ren, int W, int H) {
+    char items[220][52]; int n = 0;
+    #define ADD(...) do { if (n < 220) snprintf(items[n++], 52, __VA_ARGS__); } while (0)
+    ADD("#PANEL KEYS");
+    for (int i = 0; i < nbinds; i++) { const char *kn = SDL_GetKeyName(binds[i].key); const char *lab = cell_label[binds[i].col][binds[i].row]; ADD("%-12.12s %.30s", *kn ? kn : "?", lab); }
+    ADD(""); ADD("#PAD KEYS (pad 1 = bottom left)");
+    for (int i = 0; i < npadbinds; i++) { const char *kn = SDL_GetKeyName(padbinds[i].key); ADD("%-12.12s PAD %d", *kn ? kn : "?", padbinds[i].col); }
+    ADD(""); ADD("#EMULATOR");
+    ADD("%-12s DATA wheel - / +", "[  ]"); ADD("%-12s fast-forward (hold)", "Tab"); ADD("%-12s power cycle", "Ctrl/Cmd+R"); ADD("%-12s firmware / card chooser", "Ctrl/Cmd+O");
+    ADD("%-12s this cheat sheet", "Ctrl/Cmd+/"); ADD("%-12s close sheet / quit", "Esc");
+    ADD(""); ADD("#MOUSE");
+    ADD("Click a button: press it (held while down)"); ADD("Click a pad: hit (right = soft, middle = hard)"); ADD("Wheel / drag the jog wheel: DATA wheel");
+    ADD("Drag the knobs and sliders: Q-Links, volume"); ADD("Drop a firmware or .img file: switch to it");
+    #undef ADD
+    SDL_Rect all = { 0, 0, W, H }; SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND); SDL_SetRenderDrawColor(ren, 10, 11, 14, 247); SDL_RenderFillRect(ren, &all);
+    SDL_Color head = { 170, 200, 68, 255 }, white = { 235, 235, 240, 255 }, dim = { 150, 155, 165, 255 };
+    ui_draw_text(ren, 40, 24, 2, head, "KEY BINDINGS");
+    int per = (H - 130) / 18, colw = (W - 80) / 3, col = 0, row = 0;
+    for (int i = 0; i < n; i++) {
+        if (row >= per) { row = 0; col++; } if (col > 2) break;
+        if (row == 0 && !items[i][0]) continue;                       // no blank line at the top of a column
+        ui_draw_text(ren, 40 + col * colw, 76 + row * 18, 1, items[i][0] == '#' ? head : white, items[i][0] == '#' ? items[i] + 1 : items[i]); row++;
+    }
+    ui_draw_text(ren, 40, H - 40, 1, dim, "Keys come from panel_map.txt. Press Esc or click anywhere to close.");
+}
+
 int ui_run(const char *skin_dir, const char *keymap) {
     load_keymap(keymap);
     char path[600];
@@ -232,7 +272,7 @@ int ui_run(const char *skin_dir, const char *keymap) {
             while (*q) {
                 int fr = 0, k = 0; char dir = 0; char name[64] = "";
                 if (sscanf(q, "%d:%c:%63[^;]%n", &fr, &dir, name, &k) >= 3 && (uint64_t)fr == frames) {
-                    SDL_Event ke; memset(&ke, 0, sizeof ke); ke.type = dir == 'd' ? SDL_KEYDOWN : SDL_KEYUP; ke.key.keysym.sym = SDL_GetKeyFromName(name); SDL_PushEvent(&ke);
+                    SDL_Event ke; memset(&ke, 0, sizeof ke); ke.type = dir == 'd' ? SDL_KEYDOWN : SDL_KEYUP; { const char *kn = name; if (!strncmp(kn, "C-", 2)) { ke.key.keysym.mod = KMOD_CTRL; kn += 2; } ke.key.keysym.sym = SDL_GetKeyFromName(kn); } SDL_PushEvent(&ke);   // "C-x" = with Ctrl
                 }
                 const char *nx = strchr(q, ';'); if (!nx) break; q = nx + 1;
             }
@@ -249,8 +289,9 @@ int ui_run(const char *skin_dir, const char *keymap) {
             if (e.type == SDL_QUIT) running = 0;
             else if (e.type == SDL_KEYDOWN || e.type == SDL_KEYUP) {
                 int dn = e.type == SDL_KEYDOWN; if (e.key.repeat) continue;
-                SDL_Keycode ks = e.key.keysym.sym; int ctrl = (e.key.keysym.mod & KMOD_CTRL) != 0;
-                if (dn && ks == SDLK_ESCAPE) running = 0;
+                SDL_Keycode ks = e.key.keysym.sym; int ctrl = (e.key.keysym.mod & (KMOD_CTRL | KMOD_GUI)) != 0;
+                if (dn && ctrl && ks == SDLK_SLASH) show_help = !show_help;
+                else if (dn && ks == SDLK_ESCAPE) { if (show_help) show_help = 0; else running = 0; }
                 else if (dn && ctrl && ks == SDLK_r) reset_requested = 1;
                 else if (dn && ctrl && ks == SDLK_o) { emu_alive = 0; SDL_UnlockMutex(emu_lock); app_restart(0, 0, 1); SDL_LockMutex(emu_lock); }     // back to the firmware chooser
                 else if (ks == SDLK_TAB) { ff = dn; ff_mode = dn; emu_t0_ticks = SDL_GetPerformanceCounter(); emu_base_cycles = cpu.cycles; }
@@ -271,6 +312,11 @@ int ui_run(const char *skin_dir, const char *keymap) {
                 }
                 SDL_free(f);
             } else if (e.type == SDL_MOUSEWHEEL) { if (e.wheel.y) wheel_turn(e.wheel.y > 0 ? abs(e.wheel.y) : -abs(e.wheel.y)); }
+            else if (e.type == SDL_MOUSEBUTTONDOWN && (show_help || in_rect(&tb_help, e.button.x, e.button.y) || in_rect(&tb_fw, e.button.x, e.button.y))) {
+                if (show_help) show_help = 0;
+                else if (in_rect(&tb_help, e.button.x, e.button.y)) show_help = 1;
+                else { emu_alive = 0; SDL_UnlockMutex(emu_lock); app_restart(0, 0, 1); SDL_LockMutex(emu_lock); }     // back to the firmware / card chooser
+            }
             else if (e.type == SDL_MOUSEMOTION || e.type == SDL_MOUSEBUTTONDOWN || e.type == SDL_MOUSEBUTTONUP) {
                 int mx = e.type == SDL_MOUSEMOTION ? e.motion.x : e.button.x, my = e.type == SDL_MOUSEMOTION ? e.motion.y : e.button.y;
                 int c = -1, r = -1;
@@ -356,6 +402,8 @@ int ui_run(const char *skin_dir, const char *keymap) {
         if (board_halted()) { SDL_SetRenderDrawColor(ren, 255, 40, 40, 255); for (int k = 0; k < 6; k++) { SDL_Rect f = { k, k, W - 2 * k, H - 2 * k }; SDL_RenderDrawRect(ren, &f); } }
         { static int tr = -2, tc, trw, last = -1; if (tr == -2) { const char *t = getenv("LED_TRACE"); tr = (t && sscanf(t, "%d %d", &tc, &trw) == 2) ? 1 : -1; }   // test hook: print LED changes of one key cell ("col row")
           if (tr == 1 && led_bit[tc][trw][0] >= 0) { int v = panel_led(led_bit[tc][trw][0], led_bit[tc][trw][1]); if (v != last) { printf("LED %d,%d -> %d at frame %u\n", tc, trw, v, (unsigned)frames); last = v; } } }
+        { int tmx = 0, tmy = 0; SDL_GetMouseState(&tmx, &tmy); float lx, ly; SDL_RenderWindowToLogical(ren, tmx, tmy, &lx, &ly); draw_toolbar(ren, (int)lx, (int)ly); }
+        if (show_help) draw_cheatsheet(ren, W, H);
         if (getenv("LIVE_FRAMES") && (int)frames + 1 == atoi(getenv("LIVE_FRAMES"))) {   // test hook: save a screenshot and quit
             SDL_Surface *sf = SDL_CreateRGBSurfaceWithFormat(0, W, H, 32, SDL_PIXELFORMAT_ARGB8888);
             SDL_RenderReadPixels(ren, 0, SDL_PIXELFORMAT_ARGB8888, sf->pixels, sf->pitch); SDL_SaveBMP(sf, "live_shot.bmp"); SDL_FreeSurface(sf); running = 0;
@@ -367,7 +415,7 @@ int ui_run(const char *skin_dir, const char *keymap) {
         if (++frames % 15 == 0) {
             char t[200]; const char *lab = hover_c >= 0 ? cell_label[hover_c][hover_r] : "";
             if (board_halted()) snprintf(t, sizeof t, "MPC2500 emulator   HALTED (see console)   Ctrl+R = power cycle");
-            else snprintf(t, sizeof t, "MPC2500 emulator   %.0fM instr%s   %s%s", cpu.cycles / 1e6, ff ? "  [FAST]" : "", hover_pad ? "PAD " : "", lab);
+            else snprintf(t, sizeof t, "MPC2500 emulator %s   %.0fM instr%s   %s%s", APP_VERSION, cpu.cycles / 1e6, ff ? "  [FAST]" : "", hover_pad ? "PAD " : "", lab);
             SDL_SetWindowTitle(win, t);
         }
     }

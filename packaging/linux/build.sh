@@ -9,7 +9,7 @@ VERSION=${1:-dev}; ARCH=$(uname -m); NAME="MPC2500-Emulator-$VERSION-linux-$ARCH
 PREFIX=$(packaging/build_sdl.sh "linux-$ARCH" | tail -n 1)
 [ -f skin/skin.bmp ] || python3 -I tools/make_skin.py skin
 make -C emu clean >/dev/null
-make -C emu mpc2500emu CC=gcc CFLAGS="-O2" SDL_CF="$("$PREFIX/bin/sdl2-config" --cflags)" SDL_LD="$("$PREFIX/bin/sdl2-config" --static-libs)" 2>&1 | grep -E "error" || true
+make -C emu mpc2500emu CC=gcc CFLAGS="-O2 -DAPP_VERSION=\\\"$VERSION\\\"" SDL_CF="$("$PREFIX/bin/sdl2-config" --cflags)" SDL_LD="$("$PREFIX/bin/sdl2-config" --static-libs)" 2>&1 | grep -E "error" || true
 strip emu/mpc2500emu
 echo "linked libraries:"; ldd emu/mpc2500emu
 if ldd emu/mpc2500emu | grep -qE "libSDL2|libX11|libwayland|libpulse|libasound"; then echo "ERROR: SDL or a desktop library is linked dynamically"; exit 1; fi

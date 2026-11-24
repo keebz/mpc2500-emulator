@@ -11,7 +11,7 @@ export MACOSX_DEPLOYMENT_TARGET=11.0
 [ -f skin/skin.bmp ] || { echo "skin/skin.bmp is missing: run python3 tools/make_skin.py skin first"; exit 1; }
 PREFIX=$(packaging/build_sdl.sh "mac-$ARCH" | tail -n 1)
 make -C emu clean >/dev/null
-make -C emu mpc2500emu CC=clang CFLAGS="-O2" SDL_CF="$("$PREFIX/bin/sdl2-config" --cflags)" SDL_LD="$("$PREFIX/bin/sdl2-config" --static-libs)"
+make -C emu mpc2500emu CC=clang CFLAGS="-O2 -DAPP_VERSION=\\\"$VERSION\\\"" SDL_CF="$("$PREFIX/bin/sdl2-config" --cflags)" SDL_LD="$("$PREFIX/bin/sdl2-config" --static-libs)"
 APP="$DIST/MPC2500 Emulator.app"; rm -rf "$APP" "$DIST/$NAME".*; mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp emu/mpc2500emu "$APP/Contents/MacOS/mpc2500emu"; strip -x "$APP/Contents/MacOS/mpc2500emu"
 cp -r skin "$APP/Contents/Resources/skin"; rm -f "$APP/Contents/Resources/skin/skin_preview.png" "$APP/Contents/Resources/skin/overlay.png"

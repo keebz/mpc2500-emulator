@@ -44,6 +44,8 @@ static int wrapped(SDL_Renderer *r, int x, int y, int scale, SDL_Color c, const 
     if (ll) { line[ll] = 0; text(r, x, y, scale, c, line, 0); y += 18 * scale; }
     return y;
 }
+// text drawing for the live window (cheat sheet and toolbar): the same bitmap font, created on first use for that window's renderer
+void ui_draw_text(SDL_Renderer *r, int x, int y, int scale, SDL_Color c, const char *s) { if (!font_tex) make_font(r); text(r, x, y, scale, c, s, 0); }
 static const char *kind_label(const FwEntry *e) {
     if (!strcmp(e->kind, "build")) return "OS build"; if (!strcmp(e->kind, "test")) return "run-in-place image";
     if (!strcmp(e->kind, "sos")) return "OS-only (.SOS)"; if (!strcmp(e->kind, "dump")) return "whole-flash dump"; return "not recognised";
@@ -163,7 +165,9 @@ int ui_launcher(const char *fwdir, char *out_fw, size_t outn, const char *messag
         if (app_setting_get("card", cardpath, sizeof cardpath)) { if (!strcmp(cardpath, "none")) cardpath[0] = 0; } else { struct stat st; cardpath[0] = 0; if (stat(cardimg, &st) == 0) snprintf(cardpath, sizeof cardpath, "%s", cardimg); }
         SDL_Event e;
         int do_action = 0;
-        { static int fr; if (getenv("LAUNCHER_ENTER") && ++fr == 3) do_action = B_START; }       // test hook: press Start after a few frames
+        { static int fr; if (getenv("LAUNCHER_ENTER") && ++fr == 3) do_action = B_START; }
+        { static int fr2; const char *acts = getenv("LAUNCHER_ACTIONS");        // test hook: one action per 4 frames, b = build card, e = eject, s = start
+          if (acts && ++fr2 % 4 == 0 && acts[fr2 / 4 - 1]) { char c = acts[fr2 / 4 - 1]; do_action = c == 'b' ? B_BUILD : c == 'e' ? B_EJECT : c == 's' ? B_START : 0; } }       // test hook: press Start after a few frames
         Btn btns[10]; int nb = 0;
         int by = WIN_H - 56, cy = 522;
         btns[nb++] = (Btn){ 36, cy, 210, 34, "1  Card-files folder (F)", B_FILES };
@@ -237,7 +241,7 @@ int ui_launcher(const char *fwdir, char *out_fw, size_t outn, const char *messag
         // ---- draw ----
         SDL_SetRenderDrawColor(ren, 22, 24, 28, 255); SDL_RenderClear(ren);
         SDL_Color white = { 235, 235, 240, 255 }, dim = { 150, 155, 165, 255 }, lime = { 170, 200, 68, 255 }, warn = { 255, 200, 90, 255 };
-        text(ren, 24, 14, 2, lime, "MPC2500 Emulator", 0);
+        text(ren, 24, 14, 2, lime, "MPC2500 Emulator", 0); text(ren, 24 + 17 * 16 + 8, 22, 1, dim, APP_VERSION, 0);
         wrapped(ren, 24, 56, 1, dim, "Choose a firmware to run. Drop a firmware file onto this window to add it. No firmware is supplied with the emulator: use your own files.", 112);
         char line[PATH_MAX + 64]; { char tb[PATH_MAX + 8]; const char *fd = tilde(fwdir, tb, sizeof tb); size_t fl = strlen(fd); const char *tail = fl > 90 ? fd + fl - 88 : fd; snprintf(line, sizeof line, "Firmware folder: %s%s", fl > 90 ? "..." : "", tail); }
         text(ren, 24, 94, 1, dim, line, 112);
