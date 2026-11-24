@@ -155,9 +155,9 @@ In this document an OS image that is **larger than the stock OS area** is called
 >
 > **Trying to recover (there is NO guarantee that this will work, and this project has not verified it on hardware):**
 >
-> 1. Prepare a CompactFlash card with the original Akai OS update file (`MPC2500.SOS` for the boot-block updater) and, if you have it, the card's `INTERNAL` folder with the factory data and an `AUTOLOAD` folder with a memory save you trust (the manual: a folder named AUTOLOAD in the card's root is loaded automatically when the unit starts with the card inserted).
+> 1. Prepare a CompactFlash card with the original Akai OS file (`MPC2500.BIN`, the file from Akai's OS update download) and, if you have it, the card's `INTERNAL` folder with the factory data and an `AUTOLOAD` folder with a memory save you trust (the manual: a folder named AUTOLOAD in the card's root is loaded automatically when the unit starts with the card inserted).
 >
-> 2. Power the unit on with the card inserted so that the boot block's OS UPDATE screen installs the original Akai OS. The boot block does this by itself when it finds no valid OS. If an OS is present but keeps restarting, the boot code of the emulated unit opens the OS UPDATE screen when one of the keys OVER DUB, STEP >, WINDOW, TAP TEMPO, 0, 2 or 5 is held while powering on; that combination has not been verified on a real unit.
+> 2. Power the unit on with the card inserted so that the boot block's OS UPDATE screen installs the original Akai OS from the card. The boot block does this by itself when it finds no valid OS. The exact file name the boot-block updater needs on a real unit has not been verified by this project. If an OS is present but keeps restarting, the boot code of the emulated unit opens the OS UPDATE screen when one of the keys OVER DUB, STEP >, WINDOW, TAP TEMPO, 0, 2 or 5 is held while powering on; that combination has not been verified on a real unit.
 >
 > 3. Once the original OS runs, let the AUTOLOAD folder load, then save to INTERNAL MEMORY (SAVE ALL PROGRAMS & SAMPLES and SAVE ALL SEQS & SONGS). The manual says this erases the internal flash and replaces its data, which is how the factory data is restored. This may rebuild a valid internal memory.
 >
@@ -297,7 +297,7 @@ NOTES.md    engineering notes: what was learned about the hardware and how
 - Output level of the audio is not calibrated against the real DAC (`--audio-shift`).
 - The flash chip's ID codes could not be verified against a datasheet (no shipped firmware reads them).
 - Instruction timing is an average, not cycle accurate: busy-wait loops, or firmware that depends on exact bus timing, can behave differently from the unit.
-- Installing through the firmware's own Load-page updaters is verified (stock OS, then an OS with its own installer, then XL images). Not covered: the boot-block recovery updater (`MPC2500.SOS`, used when no valid OS is present) from the chooser, power loss in the middle of an install, and any firmware or installer other than the ones above.
+- Installing through the firmware's own Load-page updaters is verified (stock OS, then an OS with its own installer, then XL images). Not covered: the boot-block recovery updater (used when no valid OS is present) from the chooser, power loss in the middle of an install, and any firmware or installer other than the ones above.
 
 ## Documentation
 - **[QUICKSTART.md](QUICKSTART.md)** — installation and a walk-through for each firmware type.

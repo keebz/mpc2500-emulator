@@ -156,7 +156,7 @@ The emulator accepts the same firmware files you would put on a real MPC2500. Th
 |---|---|---|
 | `*.bin` (about 0.8–0.9 MB) | **Full OS build**: boot block + OS | Akai's OS update package, or your own build |
 | `*.osx`, `*.os3` (1.2–1.5 MB) | **XL OS images** (larger than the stock OS area); their header reads `MPC2500 TEST ...` | Your own or other XL builds; see [section 4](#4-installing-an-extra-large-xl-os) |
-| `*.sos` | **OS only** (no boot block) | OS update packages; needs a full build next to it as a donor |
+| `*.sos` | **OS only** (no boot block) | Some OS build tools; this is *not* the Akai download (that is the `.bin` above); needs a full build next to it as a donor |
 | 8 MiB file | A **whole-flash dump** | A flash backup |
 
 Check what the emulator recognises:
@@ -180,9 +180,9 @@ In this guide an OS image that is **larger than the stock OS area** is called an
 >
 > **Trying to recover (there is NO guarantee that this will work, and this project has not verified it on hardware):**
 >
-> 1. Prepare a CompactFlash card with the original Akai OS update file (`MPC2500.SOS` for the boot-block updater) and, if you have it, the card's `INTERNAL` folder with the factory data and an `AUTOLOAD` folder with a memory save you trust (the manual: a folder named AUTOLOAD in the card's root is loaded automatically when the unit starts with the card inserted).
+> 1. Prepare a CompactFlash card with the original Akai OS file (`MPC2500.BIN`, the file from Akai's OS update download) and, if you have it, the card's `INTERNAL` folder with the factory data and an `AUTOLOAD` folder with a memory save you trust (the manual: a folder named AUTOLOAD in the card's root is loaded automatically when the unit starts with the card inserted).
 >
-> 2. Power the unit on with the card inserted so that the boot block's OS UPDATE screen installs the original Akai OS. The boot block does this by itself when it finds no valid OS. If an OS is present but keeps restarting, the boot code of the emulated unit opens the OS UPDATE screen when one of the keys OVER DUB, STEP >, WINDOW, TAP TEMPO, 0, 2 or 5 is held while powering on; that combination has not been verified on a real unit.
+> 2. Power the unit on with the card inserted so that the boot block's OS UPDATE screen installs the original Akai OS from the card. The boot block does this by itself when it finds no valid OS. The exact file name the boot-block updater needs on a real unit has not been verified by this project. If an OS is present but keeps restarting, the boot code of the emulated unit opens the OS UPDATE screen when one of the keys OVER DUB, STEP >, WINDOW, TAP TEMPO, 0, 2 or 5 is held while powering on; that combination has not been verified on a real unit.
 >
 > 3. Once the original OS runs, let the AUTOLOAD folder load, then save to INTERNAL MEMORY (SAVE ALL PROGRAMS & SAMPLES and SAVE ALL SEQS & SONGS). The manual says this erases the internal flash and replaces its data, which is how the factory data is restored. This may rebuild a valid internal memory.
 >
@@ -425,6 +425,7 @@ An XL OS image (larger than the stock OS area) is not accepted by the boot block
 The loader prints a warning such as *"this image overwrites flash sector 15 (settings) and the internal-data sectors"*. That only affects the **emulator's in-memory flash**; every new launch starts clean. It also reminds you that the stock updater cannot install such an image on a real unit.
 
 ### 8.4 OS-only `.SOS` files
+The Akai OS itself is the `.bin` file (see section 3). An `.SOS` is an OS-only payload that some build tools produce.
 These contain only the operating system. Give the emulator a full build with a valid boot block to take it from:
 
 ```bash
