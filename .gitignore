@@ -43,3 +43,6 @@ attic/
 *.bak
 __pycache__/
 .venv/
+
+# build output
+emu/build/
