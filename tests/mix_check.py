@@ -9,7 +9,7 @@ PRE = ("tap 0 3;wait 20000000;padhit 2 100;wait 30000000;tap 2 8;wait 30000000;t
 hit = lambda pads: "audio 1;" + "".join("pad %d 100;" % p for p in pads) + "wait 4000000;" + "".join("padup %d;" % p for p in pads) + "wait 60000000;audiosave a"
 ap = argparse.ArgumentParser(); ap.add_argument("--bin", default=os.path.join(ROOT, "emu", "mpc2500emu_hl")); a = ap.parse_args()
 out = tempfile.mkdtemp(prefix="mixcheck_")
-env = dict(os.environ, CARD=os.path.join(ROOT, "card", "card.img"), SODIMM_MB="64")
+env = dict(os.environ, CARD=os.path.join(ROOT, "card", "test_card.img"), SODIMM_MB="64")
 subprocess.run([a.bin, os.path.join(ROOT, "archive", "v124", "mpc2500.bin"), "--audio-shift", "4", "--exp", out, "300000000", "PRELUDE=" + PRE,
                 "p1=" + hit([1]), "p3=" + hit([3]), "p5=" + hit([5]), "p13=" + hit([1, 3]), "p135=" + hit([1, 3, 5])], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
 def ld(n):

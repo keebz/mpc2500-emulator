@@ -89,7 +89,7 @@ key F6 2 8
 key F1 2 9
 key K 2 10
 key Space 3 0
-key Page Up 3 1
+key PageUp 3 1
 key Down 3 2
 key Up 3 3
 key - 3 4
@@ -97,7 +97,7 @@ key F5 3 8
 key F2 3 9
 key F9 3 10
 key Z 4 0
-key Page Down 4 1
+key PageDown 4 1
 key U 4 2
 key Right 4 3
 key = 4 4

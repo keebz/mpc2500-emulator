@@ -46,6 +46,12 @@ def scenarios():
     hit = "audio 1;padhit 1 100;wait 60000000;audiosave a"
     s.append(dict(name="pan_stereo", img="stock", boot=300_000_000, prelude=KIT_PRELUDE,
                   forks={"left": mixer + "wheel -1 60;" + hit, "right": mixer + "wheel 1 60;" + hit, "mid": mixer + hit}))
+    # Q-Link inputs (AN2 on the four analog mux lines): on the MIXER L/PAN page line 3 (Q1) moves the pad level and line 0 (Q2) the pad pan
+    mix = "press 0 3;padhit 8 100;release 0 3;wait 60000000;"
+    s.append(dict(name="qlink_mixer", img="stock", boot=300_000_000,
+                  forks={"base": mix + "dump a", "q1": mix + "qlink 3 1000;wait 20000000;qlink 3 0;wait 30000000;dump a",
+                         "q2": mix + "qlink 0 1000;wait 20000000;qlink 0 0;wait 30000000;dump a", "q3": mix + "qlink 1 1000;wait 20000000;qlink 1 0;wait 30000000;dump a"},
+                  differ=[("base_a.bin", "q1_a.bin"), ("base_a.bin", "q2_a.bin"), ("q1_a.bin", "q2_a.bin")]))
     s.append(dict(name="jv313_boot", img="jv313", boot=300_000_000, forks={"main": "wait 1000000;dump a"}))
     for k in ("xl390", "light100", "jv263"):
         s.append(dict(name=k + "_boot", img=k, boot=400_000_000, env={"FLASH_MODE": "full"}, forks={"main": "wait 1000000;dump a"}))
@@ -81,6 +87,8 @@ def run_scenario(sc, binary, card, raw=False):
         if f.endswith(".bin") or f.endswith(".wav"):
             res[f] = hashlib.sha256(open(path, "rb").read()).hexdigest()[:16]
     fatal = [l for l in p.stdout.splitlines() if "FAULT REPORT" in l or "UNIMPLEMENTED" in l or "ILLEGAL" in l]
+    for x, y in sc.get("differ", []):
+        if x in res and y in res and res[x] == res[y]: fatal.append("EXPECTED A DIFFERENCE: %s == %s" % (x, y))
     for x, y in sc.get("same", []):
         if res.get(x) != res.get(y): fatal.append("PARITY FAILED: %s != %s" % (x, y))
     shutil.rmtree(out, ignore_errors=True)
@@ -96,7 +104,7 @@ def main():
     ap.add_argument("--raw", action="store_true", help="pass raw firmware files; the emulator's loader converts them")
     a = ap.parse_args(); a.bin = os.path.abspath(a.bin)
     for k in IMG: prepare_image(k, a.raw)        # build images up front (single thread) so scenarios can share them
-    card = os.path.join(ROOT, "card", "card.img")
+    card = os.path.join(ROOT, "card", "test_card.img")     # kit files in the root folder, no AUTOLOAD (the OS would load it at boot)
     gold_path = os.path.join(ROOT, "tests", "golden.json")
     gold = json.load(open(gold_path)) if os.path.exists(gold_path) else {}
     todo = [s for s in scenarios() if a.filter in s["name"]]

@@ -7,6 +7,8 @@
 uint8_t soc_lo[SOC_SIZE] __attribute__((aligned(8)));     // 0xA4000000-0xA4000FFF
 uint8_t soc_hi[0x200] __attribute__((aligned(8)));        // 0xFFFFFE00-0xFFFFFFFF
 uint16_t adc10[4][4];
+uint16_t qlink_adc[4];                 // AN2 for each analog mux line: the Q-Link controls (10 bit)
+static int adc_grp;                    // last conversion group started by ADCSR: 0 = AN2/AN3, 1 = AN4..AN7
 uint64_t soc_irq_count, siof_frames, dmac_done;
 unsigned siof_irq_div = 1;
 
@@ -123,6 +125,7 @@ static int adc_channels(uint8_t csr) {
 static void adc_start(void) {
     uint8_t csr = soc_lo[0x90]; int n = adc_channels(csr);
     if (!n) { soc_lo[0x90] &= (uint8_t)~0x20; adc_running = 0; return; }
+    adc_grp = ((csr & 7) >= 4) ? 1 : 0;
     adc_running = 1; adc_done_at = cpu.cycles + (uint64_t)n * ((csr & 8) ? 266 : 536) * 2;
 }
 static void adc_service(void) {
@@ -203,7 +206,7 @@ void soc_dump_intc(void) {
 }
 
 void soc_reset(void) {
-    memset(soc_lo, 0, sizeof soc_lo); memset(soc_hi, 0, sizeof soc_hi); memset(adc10, 0, sizeof adc10); adc_running = 0; soc_lo[0x92] = 0x07;
+    memset(soc_lo, 0, sizeof soc_lo); memset(soc_hi, 0, sizeof soc_hi); memset(adc10, 0, sizeof adc10); adc_running = 0; adc_grp = 1; soc_lo[0x92] = 0x07;
     memset(tmu_acc, 0, sizeof tmu_acc);
     intevt2 = 0; last_cycles = 0; frame_next = STEPS_PER_FRAME; next_pad_refresh = 0; txi_pending = 0; dma_req = 0;
     siof_frames = dmac_done = soc_irq_count = 0;
@@ -218,7 +221,11 @@ uint32_t soc_read(uint32_t a, int size) {
         uint8_t pj = soc_lo[0x130]; int m = -1;
         for (int k = 0; k < 4; k++) if (!(pj & (0x40 >> k))) m = k;
         uint8_t b[16] = {0};
-        for (int ch = 0; ch < 4; ch++) { uint16_t x = m >= 0 ? adc10[m][ch] : 0; b[ch * 4] = (uint8_t)(x >> 2); b[ch * 4 + 2] = (uint8_t)((x & 3) << 6); }
+        for (int ch = 0; ch < 4; ch++) { uint16_t x = m >= 0 ? adc10[m][ch] : 0; if (ch == 2 && adc_grp == 0 && m >= 0) x = qlink_adc[m]; b[ch * 4] = (uint8_t)(x >> 2); b[ch * 4 + 2] = (uint8_t)((x & 3) << 6); }
+        if (size == 4) {   // 32-bit access: the stock OS decodes (byte3 << 2 | byte1 >> 6) & 0x3FF, i.e. the high data byte on byte lane 3 and the two low bits on lane 1
+            int ch = (int)((a - 0x04000080) >> 2) & 3; uint8_t h = b[ch * 4], l = b[ch * 4 + 2];
+            return (uint32_t)h | ((uint32_t)l << 8) | ((uint32_t)l << 16) | ((uint32_t)h << 24);
+        }
         v = 0; for (int i = 0; i < size; i++) v |= (uint32_t)b[(a - 0x04000080) + i] << (8 * i);
         return v;
     }

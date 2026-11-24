@@ -85,6 +85,7 @@ extern uint64_t lcd_writes;
 // ---- soc.c ---------------------------------------------------------------------------------------------------------
 extern uint8_t soc_lo[SOC_SIZE];
 extern uint8_t soc_hi[0x200];
+extern uint16_t qlink_adc[4];          // Q-Link inputs (AN2 on each analog mux line), 10 bit
 extern uint16_t adc10[4][4];           // ADC value per [mux line][channel], 10 bit (left aligned x4)
 void soc_reset(void);
 void soc_dump_intc(void);

@@ -25,7 +25,13 @@ static void load_keymap(const char *path) {
         if (line[0] == '#') continue;
         if (sscanf(line, "cell %d %d %63[^\n]", &c, &r, label) == 3 && c >= 0 && c < 5 && r >= 0 && r < 11) snprintf(cell_label[c][r], 32, "%.31s", label);
         else if (sscanf(line, "padkey %d %63[^\n]", &c, name) == 2 && npadbinds < 32) { SDL_Keycode k = SDL_GetKeyFromName(name); if (k != SDLK_UNKNOWN) padbinds[npadbinds++] = (KeyBind){ k, c, 0 }; }
-        else if (sscanf(line, "key %63s %d %d", name, &c, &r) == 3 && nbinds < 256) { SDL_Keycode k = SDL_GetKeyFromName(name); if (k != SDLK_UNKNOWN) binds[nbinds++] = (KeyBind){ k, c, r }; }
+        else if (!strncmp(line, "key ", 4) && nbinds < 256) {          // key names may contain spaces ("Left Shift", "Page Up"): the last two numbers are column and row
+            char rest[200]; snprintf(rest, sizeof rest, "%.199s", line + 4); size_t n = strlen(rest); while (n && (rest[n - 1] == '\n' || rest[n - 1] == '\r' || rest[n - 1] == ' ')) rest[--n] = 0;
+            char *p2 = strrchr(rest, ' '); if (!p2) continue; *p2 = 0; int rr = atoi(p2 + 1);
+            char *p1 = strrchr(rest, ' '); if (!p1) continue; *p1 = 0; int cc = atoi(p1 + 1);
+            SDL_Keycode k = SDL_GetKeyFromName(rest); if (k != SDLK_UNKNOWN && cc >= 0 && cc < 5 && rr >= 0 && rr < 11) binds[nbinds++] = (KeyBind){ k, cc, rr };
+            else if (k == SDLK_UNKNOWN) fprintf(stderr, "warning: unknown key name '%s' in keymap\n", rest);
+        }
     }
     fclose(f);
 }
@@ -168,6 +174,9 @@ static int emu_thread(void *unused) {
     return 0;
 }
 
+// analog mux line (PJDR 0x38, 0x58, 0x68, 0x70 = lines 0-3) -> Q-Link index (0 = Q1). Found with the stock OS: on the MIXER L/PAN page the AN2 input of line 3
+// moves the pad level (Q1) and line 0 the pad pan (Q2); lines 1 and 2 are Q3 and Q4 (the OS scans the lines in the cyclic order 0x38, 0x58, 0x68, 0x70).
+static int qlink_map[4] = { 1, 2, 3, 0 };
 static int in_rect(const SDL_Rect *r, int x, int y) { return x >= r->x && x < r->x + r->w && y >= r->y && y < r->y + r->h; }
 
 int ui_run(const char *skin_dir, const char *keymap) {
@@ -197,6 +206,7 @@ int ui_run(const char *skin_dir, const char *keymap) {
     SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
 
     // Q1-Q4 sliders/knobs and REC GAIN / MAIN VOLUME: drawn and draggable, but not wired to anything the firmware reads yet
+    if (getenv("QLINK_MAP")) for (int m = 0; m < 4 && getenv("QLINK_MAP")[m]; m++) qlink_map[m] = getenv("QLINK_MAP")[m] - '0';
     int qv[5] = { 0, 50, 50, 50, 50 }, recgain_v = 60, mainvol_v = 75;
     int knob_drag = -1, knob_last_y = 0, wheel_drag = 0, wheel_last_y = 0;
     int hover_pad = 0, hover_c = -1, hover_r = -1, mouse_pad = 0, mouse_col = -1, mouse_row = -1, running = 1, ff = 0;
@@ -222,6 +232,10 @@ int ui_run(const char *skin_dir, const char *keymap) {
                 }
                 const char *nx = strchr(q, ';'); if (!nx) break; q = nx + 1;
             }
+        }
+        if (getenv("LIVE_QSET")) {                       // test hook: "frame:Qn:value;..." moves a Q-Link control at a given frame
+            const char *q = getenv("LIVE_QSET");
+            while (*q) { int fr, qi, val; if (sscanf(q, "%d:%d:%d", &fr, &qi, &val) == 3 && (uint64_t)fr == frames && qi >= 1 && qi <= 4) qv[qi] = val; const char *nx = strchr(q, ';'); if (!nx) break; q = nx + 1; }
         }
         if (inj_f >= 0 && (int)frames == inj_f) { SDL_Event w; memset(&w, 0, sizeof w); w.type = SDL_MOUSEWHEEL; w.wheel.y = inj_n; SDL_PushEvent(&w); inj_f = -1; }
         ui_waiting = 1; SDL_LockMutex(emu_lock); ui_waiting = 0;
@@ -275,6 +289,7 @@ int ui_run(const char *skin_dir, const char *keymap) {
         // (the emulation thread advances the board; here only the LCD image is taken, under the lock)
         { uint8_t fb[LCD_BYTES]; lcd_render(fb);   // T6963C frame: bit 7 = leftmost pixel, 1 = dark; lime-green backlit LCD colours
           for (int y = 0; y < LCD_H; y++) for (int bx = 0; bx < LCD_W / 8; bx++) { uint8_t b = fb[y * (LCD_W / 8) + bx]; for (int k = 0; k < 8; k++) pix[y * LCD_W + bx * 8 + k] = ((b >> (7 - k)) & 1) ? 0x18260C : 0xAAC844; } }
+        for (int m = 0; m < 4; m++) qlink_adc[m] = (uint16_t)(qv[qlink_map[m] + 1] * 1023 / 100);        // Q-Link controls -> AN2 on each analog mux line
         SDL_UnlockMutex(emu_lock);
         SDL_UpdateTexture(lcd_tex, 0, pix, LCD_W * 4);
 

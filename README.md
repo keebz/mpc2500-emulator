@@ -27,6 +27,13 @@ Firmware choice: if `firmware/` holds exactly one usable file it is used; otherw
 
 Accepted firmware: full Akai/JJOS builds (`.bin`), run-in-place test images (`.osx`, `.os3`), OS-only `.SOS` (needs a full build in the same folder as boot-block donor), and 8 MiB flash dumps. Files are only read; the emulator's flash is in memory and never written back unless you pass `--save-flash`.
 
+## CompactFlash card, AUTOLOAD and the INTERNAL memory
+- A card with an `AUTOLOAD` folder in its root makes the stock OS load that folder's contents (project, programs, samples) by itself at power-up (Operator's manual p.106/110); the
+  Load page's *Autoload* setting can switch it off. `tools/make_autoload_card.sh IN.img OUT.img` creates the folder by driving the emulated OS through SAVE ENTIRE MEMORY -> A.LOAD, so
+  the files are exactly what the firmware writes. Loading a 19 MB kit takes ~35 s of emulated time at start-up (hold `Tab` to fast-forward).
+- "INTERNAL MEMORY" in the LOAD/SAVE pages is not a folder on the card: it is the unit's 8 MiB flash chip (internal programs/samples at 0x2A0000+, sequences/songs at 0x100000+),
+  which exists only inside the emulator. It starts blank on every launch; `--save-flash FILE` writes it out and `--flash-state FILE` starts from it again.
+
 ## CompactFlash card and RAM
 - Put a FAT16 image at `card/card.img` (or pass `--card FILE`). It is copy-on-write: your file is never modified.
 - Build one without root: `python3 tools/mkfat16.py card/card.img 128 FILE1 FILE2 ...` (128 MB image holding those files).

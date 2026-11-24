@@ -28,6 +28,12 @@
   "mid_a.wav": "e7a151e13b57719a",
   "right_a.wav": "ec7f5f52b965c351"
  },
+ "qlink_mixer": {
+  "base_a.bin": "2ef2bb841a0674cb",
+  "q1_a.bin": "0f66767040327d86",
+  "q2_a.bin": "bf600d8d8fa07fb2",
+  "q3_a.bin": "2ef2bb841a0674cb"
+ },
  "stock_boot": {
   "main_a.bin": "d9a2c8bf47a418f3"
  },
