@@ -28,13 +28,14 @@ static void usage(const char *prog) {
            "  --keymap FILE       keyboard map (default: panel_map.txt)\n"
            "  --fault-strict      treat unmapped / misaligned accesses as fatal\n"
            "  --save-flash FILE   write the flash contents when the emulator exits\n"
+           "  --save-card FILE    write the CompactFlash image (including anything the firmware saved to it) to FILE when the emulator exits\n"
            "  --flash-state FILE  start from a saved whole-flash image instead of the firmware\n", prog);
 }
 
 static int is_number(const char *s) { if (!*s) return 0; for (; *s; s++) if (*s < '0' || *s > '9') return 0; return 1; }
 
 int main(int argc, char **argv) {
-    const char *fw_path = 0, *fw_dir = 0, *donor = 0, *card_path = getenv("CARD"), *skin = "skin", *keymap = "panel_map.txt", *save_flash = 0, *flash_state = 0;
+    const char *fw_path = 0, *fw_dir = 0, *donor = 0, *card_path = getenv("CARD"), *skin = "skin", *keymap = "panel_map.txt", *save_flash = 0, *flash_state = 0, *save_card = 0;
     int ram_mb = getenv("SODIMM_MB") ? atoi(getenv("SODIMM_MB")) : 128, list = 0, headless = 0, want_live = 0;
     enum { M_AUTO, M_EXP, M_SWEEP, M_STEPS } mode = M_AUTO;
     uint64_t steps = 5000000; const char *exp_dir = 0; uint64_t boot_steps = 300000000ull; int exp_n = 0; char **exp_specs = 0;
@@ -55,6 +56,7 @@ int main(int argc, char **argv) {
         else if (!strcmp(a, "--keymap") && i + 1 < argc) keymap = argv[++i];
         else if (!strcmp(a, "--save-flash") && i + 1 < argc) save_flash = argv[++i];
         else if (!strcmp(a, "--flash-state") && i + 1 < argc) flash_state = argv[++i];
+        else if (!strcmp(a, "--save-card") && i + 1 < argc) save_card = argv[++i];
         else if (!strcmp(a, "--list")) list = 1;
         else if (!strcmp(a, "--headless")) headless = 1;
         else if (!strcmp(a, "--live")) { want_live = 1; if (i + 1 < argc && argv[i + 1][0] != '-' && !is_number(argv[i + 1])) keymap = argv[++i]; }
@@ -130,6 +132,7 @@ int main(int argc, char **argv) {
         fprintf(stderr, "this build has no window support (built without SDL2); use --headless/--steps/--exp, or rebuild with SDL2\n"); rc = 2;
 #endif
     }
+    if (save_card) { if (card_save(save_card) == 0) printf("Card saved to %s\n", save_card); else fprintf(stderr, "could not write %s\n", save_card); }
     if (save_flash) { if (flash_save(save_flash) == 0) printf("Flash saved to %s\n", save_flash); else fprintf(stderr, "could not write %s\n", save_flash); }
     return rc;
 }

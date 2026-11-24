@@ -31,7 +31,7 @@ clean:
 FIRMWARE ?= $(firstword $(wildcard ../firmware/*.bin ../firmware/*.BIN ../firmware/*.osx ../firmware/*.os3))
 PGO_DIR  := build/pgo
 pgo:
-	@test -n "$(FIRMWARE)" || { echo "pgo: no firmware found; pass FIRMWARE=file"; exit 1; }
+	@test -f "$(FIRMWARE)" || { echo "pgo: firmware file not found: '$(FIRMWARE)' (the path is relative to the emu/ folder, e.g. FIRMWARE=../firmware/file.bin)"; exit 1; }
 	rm -rf $(PGO_DIR) && mkdir -p $(PGO_DIR)
 	for f in $(basename $(SRC)); do $(CC) -O2 -fprofile-generate -c $$f.c -o $(PGO_DIR)/$$f.o || exit 1; done
 	$(CC) -fprofile-generate -o $(PGO_DIR)/train $(addprefix $(PGO_DIR)/,$(SRC:.c=.o)) -lm

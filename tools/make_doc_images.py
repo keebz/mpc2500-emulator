@@ -49,7 +49,7 @@ def screens():
                         "slider=press 0 3;wait 20000000;padhit 1 100;wait 20000000;release 0 3;wait 80000000;tap 3 2;wait 20000000;padhit 5 100;wait 40000000;"
                         "tap 3 2;wait 20000000;wheel -1 1;wait 40000000;tap 3 2;wait 20000000;wheel 1 3;wait 40000000;dump a"], prelude=KIT_PRELUDE)
     lcd_png(f"{t}/filter_a.bin", "lcd_program_filter.png"); lcd_png(f"{t}/slider_a.bin", "lcd_slider.png")
-    t = run_exp(STOCK, ["loading=wait 700000000;dump a", "done=wait 3500000000;dump a"], boot=1000, card="card.img")
+    t = run_exp(STOCK, ["loading=wait 200000000;dump a", "done=wait 800000000;dump a"], boot=1000, card="card.img")
     lcd_png(f"{t}/loading_a.bin", "lcd_autoload_loading.png"); lcd_png(f"{t}/done_a.bin", "lcd_autoload_done.png")
     # --- the other firmware families ---
     for fname, path, png, env in (("jv313", os.path.join(FW, "MPC2500", "mpc2500_jv313.bin"), "lcd_jjos_jv313.png", {}),

@@ -16,7 +16,7 @@ live_shot.bmp
 attic/
 *.log
 *.png
-!docs/*.png
+!docs/images/*.png
 # every experiment directory and scratch file at the top level
 /c?/
 /c??/
