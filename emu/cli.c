@@ -93,13 +93,15 @@ int main(int argc, char **argv) {
         g_card_dir = strdup((snprintf(card_buf, sizeof card_buf, "%s/card", ud), card_buf));
         if (!card_path) {
             char saved[600]; FILE *t;
-            if (app_setting_get("card", saved, sizeof saved) && (t = fopen(saved, "rb"))) { fclose(t); card_path = strdup(saved); }
-            else { snprintf(card_buf, sizeof card_buf, "%s/card/card.img", ud); if ((t = fopen(card_buf, "rb"))) { fclose(t); card_path = strdup(card_buf); } }
+            if (app_setting_get("card", saved, sizeof saved) && !strcmp(saved, "none")) card_path = 0;                      // ejected in the launcher
+            else if (app_setting_get("card", saved, sizeof saved) && (t = fopen(saved, "rb"))) { fclose(t); card_path = strdup(saved); }
+            else if (!(app_setting_get("card", saved, sizeof saved) && !strcmp(saved, "none"))) { snprintf(card_buf, sizeof card_buf, "%s/card/card.img", ud); if ((t = fopen(card_buf, "rb"))) { fclose(t); card_path = strdup(card_buf); } }
         }
     }
     if (!fw_dir) fw_dir = "firmware";
     g_fw_dir = fw_dir;
-    if (!fw_path && !flash_state && window_mode && !pick && appm) {                      // reuse the firmware chosen last time
+    if (0 && !fw_path && !flash_state && window_mode && !pick && appm) {   // (disabled) the chooser is now always shown, so the card options stay reachable
+                              // reuse the firmware chosen last time
         char saved[600]; FILE *t; if (app_setting_get("firmware", saved, sizeof saved) && (t = fopen(saved, "rb"))) { fclose(t); snprintf(path_buf, sizeof path_buf, "%s", saved); fw_path = path_buf; }
     }
     int need_pick = pick && window_mode;

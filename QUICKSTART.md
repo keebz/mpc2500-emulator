@@ -23,9 +23,14 @@ Download the file for your system from the project's **Releases** page. It conta
 
 1. **Drag your firmware file onto the window** (or copy it into the `firmware` folder and press `R`). The list shows what each file is.
 2. Select it and press **Enter** (or double-click it). The emulator window opens and the firmware boots.
-3. **CompactFlash card (optional):** drop a card image (`.img`) onto the window to use it; or press **N** for a blank 128 MB card (format it once in the firmware: `MODE` + `PAD 2`, `F3` UTILIT, `F6` DO IT); or put files in the `card-files` folder (a sub-folder such as `AUTOLOAD` works too) and press **B** to build a card from them. Whatever the firmware saves to the card is kept for next time.
+3. **Put your kits and sounds on the memory card.** The firmware can only load files from the card, so they have to go on one:
+   1. Click **1 Card-files folder** (or press `F`). Your file manager opens the `card-files` folder. Copy your kits and sounds into it (`.PGM`, `.SND`, `.WAV`, `.SEQ`, `.ALL`...). Sub-folders are fine. A folder named `AUTOLOAD` is loaded by the firmware at start-up, as on the real unit.
+   2. Click **2 Build card** (or press `B`). This makes the card image from that folder. It replaces the current card (the old one is kept as `card.img.bak`), so do it again whenever you add files.
+   3. Click **Start**. In the firmware press **LOAD** to see the card.
 
-**Afterwards:** the app starts the last firmware by itself. Drop another firmware or card file on the running window to switch, press `Ctrl+O` to return to the chooser, `Esc` to quit. The panel controls are described in [section 4](#4-first-run); the other sections of this guide are for people building from source or testing firmware from the command line.
+   Other options: **Blank card** makes an *empty* card (nothing on it), **Eject** starts without a card, **Show card** opens the folder holding the card image, and you can drop an existing card image (`.img`) onto the window to use it. Whatever the firmware saves to the card is kept in the card image.
+
+**Afterwards:** the chooser appears at every start with your last firmware already selected, so press **Enter** to go. `Ctrl+O` returns to the chooser from the running emulator, `Esc` quits. The panel controls are described in [section 4](#4-first-run); the other sections of this guide are for people building from source or testing firmware from the command line.
 
 ---
 

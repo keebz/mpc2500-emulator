@@ -14,13 +14,24 @@ uint8_t pad_velocity[17];
 static uint64_t pad_hold_until[17];
 
 // ---- keys ----
+// A front-panel key is held down for at least PANEL_MIN_HOLD emulated instructions (~60 ms), like a finger tap: a mouse click can arrive as press and
+// release in the same UI frame (trackpads, a busy window), and the firmware, which scans the keys on a timer, would never see such a tap.
+#define PANEL_MIN_HOLD 4000000ull
+static uint64_t press_at[PANEL_COLS][PANEL_ROWS]; static uint64_t release_at[PANEL_COLS][PANEL_ROWS]; static uint16_t release_pending[PANEL_COLS];
+static void panel_service(void) {
+    for (int c = 0; c < PANEL_COLS; c++) if (release_pending[c]) for (int r = 0; r < PANEL_ROWS; r++)
+        if (((release_pending[c] >> r) & 1) && cpu.cycles >= release_at[c][r]) { release_pending[c] &= (uint16_t)~(1u << r); panel_keys[c] &= (uint16_t)~(1u << r); }
+}
 void panel_press(int col, int row, int down) {
     if (col < 0 || col >= PANEL_COLS || row < 0 || row >= PANEL_ROWS) return;
-    if (down) panel_keys[col] |= (uint16_t)(1u << row); else panel_keys[col] &= (uint16_t)~(1u << row);
+    uint16_t bit = (uint16_t)(1u << row);
+    if (down) { panel_keys[col] |= bit; release_pending[col] &= (uint16_t)~bit; press_at[col][row] = cpu.cycles; }
+    else if (cpu.cycles < press_at[col][row] + PANEL_MIN_HOLD) { release_pending[col] |= bit; release_at[col][row] = press_at[col][row] + PANEL_MIN_HOLD; }
+    else { panel_keys[col] &= (uint16_t)~bit; release_pending[col] &= (uint16_t)~bit; }
 }
 static int active_col(void) { uint8_t pc = soc_lo[0x124] & 0xF8; for (int c = 0; c < PANEL_COLS; c++) if (pc == (8u << c)) return c; return -1; }
-uint8_t panel_port_pm(void) { int c = active_col(); uint16_t rows = c >= 0 ? panel_keys[c] : 0; return 0x80 | (uint8_t)(~rows & 0x7F); }
-uint8_t panel_port_pg(void) { int c = active_col(); uint16_t rows = c >= 0 ? panel_keys[c] : 0; return (uint8_t)((card_present ? 0xC0 : 0xC3) | (((~(rows >> 7)) & 0xF) << 2)); }
+uint8_t panel_port_pm(void) { panel_service(); int c = active_col(); uint16_t rows = c >= 0 ? panel_keys[c] : 0; return 0x80 | (uint8_t)(~rows & 0x7F); }
+uint8_t panel_port_pg(void) { panel_service(); int c = active_col(); uint16_t rows = c >= 0 ? panel_keys[c] : 0; return (uint8_t)((card_present ? 0xC0 : 0xC3) | (((~(rows >> 7)) & 0xF) << 2)); }
 
 // ---- pads: pad n (1..16, PAD 1 bottom-left) -> raw index r = 4*(3-(n-1)/4) + (n-1)%4 -> mux m = r/4, ADC channel = (r+3)%4 ----
 static uint16_t vel_to_adc(int v) { int a = 12 + v * 243 / 127; return (uint16_t)(a > 255 ? 255 : a); }   // the OS registers a hit at ADC >= 10

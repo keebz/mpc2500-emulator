@@ -126,7 +126,7 @@ On the first start the app creates a folder called **MPC2500 Emulator** in your 
 
 <p align="center"><img src="docs/images/launcher.png" alt="The firmware chooser" width="640"></p>
 
-Next time the app starts the firmware you used last. While it runs: drop another firmware or card file on the window to switch, `Ctrl+O` returns to the chooser, and what the firmware saves to the card is kept. macOS shows a one-time security prompt because the app is not notarised by Apple (see [packaging/README.md](packaging/README.md#notes)). To build the applications yourself see [packaging/README.md](packaging/README.md).
+Next time the chooser appears again with your last firmware selected: press Enter. To get kits and sounds into the emulator, use the card panel in the chooser (**1 Card-files folder**, copy your files in, **2 Build card**, then Start). While it runs: drop another firmware or card file on the window to switch, `Ctrl+O` returns to the chooser, and what the firmware saves to the card is kept. macOS shows a one-time security prompt because the app is not notarised by Apple (see [packaging/README.md](packaging/README.md#notes)). To build the applications yourself see [packaging/README.md](packaging/README.md).
 
 ## Quick start (from source)
 

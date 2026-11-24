@@ -354,6 +354,8 @@ int ui_run(const char *skin_dir, const char *keymap) {
             fill_circle(ren, dx + 1, dy + 1.5f, wr * 0.20f, (SDL_Color){ 70, 72, 78, 255 }); fill_circle(ren, dx, dy, wr * 0.19f, (SDL_Color){ 150, 152, 158, 255 }); fill_circle(ren, dx - 1, dy - 1.2f, wr * 0.15f, (SDL_Color){ 218, 220, 226, 255 });
         }
         if (board_halted()) { SDL_SetRenderDrawColor(ren, 255, 40, 40, 255); for (int k = 0; k < 6; k++) { SDL_Rect f = { k, k, W - 2 * k, H - 2 * k }; SDL_RenderDrawRect(ren, &f); } }
+        { static int tr = -2, tc, trw, last = -1; if (tr == -2) { const char *t = getenv("LED_TRACE"); tr = (t && sscanf(t, "%d %d", &tc, &trw) == 2) ? 1 : -1; }   // test hook: print LED changes of one key cell ("col row")
+          if (tr == 1 && led_bit[tc][trw][0] >= 0) { int v = panel_led(led_bit[tc][trw][0], led_bit[tc][trw][1]); if (v != last) { printf("LED %d,%d -> %d at frame %u\n", tc, trw, v, (unsigned)frames); last = v; } } }
         if (getenv("LIVE_FRAMES") && (int)frames + 1 == atoi(getenv("LIVE_FRAMES"))) {   // test hook: save a screenshot and quit
             SDL_Surface *sf = SDL_CreateRGBSurfaceWithFormat(0, W, H, 32, SDL_PIXELFORMAT_ARGB8888);
             SDL_RenderReadPixels(ren, 0, SDL_PIXELFORMAT_ARGB8888, sf->pixels, sf->pitch); SDL_SaveBMP(sf, "live_shot.bmp"); SDL_FreeSurface(sf); running = 0;

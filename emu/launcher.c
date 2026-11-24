@@ -11,7 +11,7 @@
 #define WIN_W 920
 #define WIN_H 700
 typedef struct { int x, y, w, h; const char *label; int id; } Btn;
-enum { B_START = 1, B_OPEN, B_NEWCARD, B_BUILD, B_CARDDIR, B_QUIT, B_RESCAN };
+enum { B_START = 1, B_OPEN, B_NEWCARD, B_BUILD, B_CARDDIR, B_QUIT, B_RESCAN, B_FILES, B_EJECT };
 
 static const uint8_t lfont[96][16] = {
 #include "launcherfont.inc"
@@ -160,16 +160,19 @@ int ui_launcher(const char *fwdir, char *out_fw, size_t outn, const char *messag
     }
     int result = -1;
     while (result < 0) {
-        if (!app_setting_get("card", cardpath, sizeof cardpath)) { struct stat st; cardpath[0] = 0; if (stat(cardimg, &st) == 0) snprintf(cardpath, sizeof cardpath, "%s", cardimg); }
+        if (app_setting_get("card", cardpath, sizeof cardpath)) { if (!strcmp(cardpath, "none")) cardpath[0] = 0; } else { struct stat st; cardpath[0] = 0; if (stat(cardimg, &st) == 0) snprintf(cardpath, sizeof cardpath, "%s", cardimg); }
         SDL_Event e;
         int do_action = 0;
         { static int fr; if (getenv("LAUNCHER_ENTER") && ++fr == 3) do_action = B_START; }       // test hook: press Start after a few frames
-        Btn btns[7]; int nb = 0;
-        int by = WIN_H - 56;
+        Btn btns[10]; int nb = 0;
+        int by = WIN_H - 56, cy = 522;
+        btns[nb++] = (Btn){ 36, cy, 210, 34, "1  Card-files folder (F)", B_FILES };
+        btns[nb++] = (Btn){ 256, cy, 200, 34, "2  Build card (B)", B_BUILD };
+        btns[nb++] = (Btn){ 466, cy, 140, 34, "Blank card (N)", B_NEWCARD };
+        btns[nb++] = (Btn){ 616, cy, 110, 34, "Eject (E)", B_EJECT };
+        btns[nb++] = (Btn){ 736, cy, 148, 34, "Show card (C)", B_CARDDIR };
         btns[nb++] = (Btn){ 24, by, 200, 36, "Start (Enter)", B_START };
-        btns[nb++] = (Btn){ 236, by, 190, 36, "Open folder (O)", B_OPEN };
-        btns[nb++] = (Btn){ 438, by, 170, 36, "New card (N)", B_NEWCARD };
-        btns[nb++] = (Btn){ 620, by, 170, 36, "Build card (B)", B_BUILD };
+        btns[nb++] = (Btn){ 236, by, 240, 36, "Firmware folder (O)", B_OPEN };
         btns[nb++] = (Btn){ 802, by, 94, 36, "Quit", B_QUIT };
         while (SDL_PollEvent(&e)) {
             if (e.type == SDL_QUIT) result = 0;
@@ -180,11 +183,11 @@ int ui_launcher(const char *fwdir, char *out_fw, size_t outn, const char *messag
                 else if (k == SDLK_DOWN && sel + 1 < n) sel++;
                 else if (k == SDLK_RETURN || k == SDLK_KP_ENTER) do_action = B_START;
                 else if (k == SDLK_o) do_action = B_OPEN; else if (k == SDLK_r) do_action = B_RESCAN;
-                else if (k == SDLK_n) do_action = B_NEWCARD; else if (k == SDLK_b) do_action = B_BUILD; else if (k == SDLK_c) do_action = B_CARDDIR;
+                else if (k == SDLK_n) do_action = B_NEWCARD; else if (k == SDLK_b) do_action = B_BUILD; else if (k == SDLK_c) do_action = B_CARDDIR; else if (k == SDLK_f) do_action = B_FILES; else if (k == SDLK_e) do_action = B_EJECT;
             } else if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
                 int mx = e.button.x, my = e.button.y;
                 for (int i = 0; i < nb; i++) if (mx >= btns[i].x && mx < btns[i].x + btns[i].w && my >= btns[i].y && my < btns[i].y + btns[i].h) do_action = btns[i].id;
-                int row = (my - 128) / 64; if (my >= 128 && row >= 0 && row < n && row < 5 && mx < WIN_W - 24) {
+                int row = (my - 128) / 52; if (my >= 128 && row >= 0 && row < n && row < 4 && mx < WIN_W - 24) {
                     sel = row; Uint32 t = SDL_GetTicks(); if (row == last_row && t - last_click < 450) do_action = B_START; last_click = t; last_row = row;
                 }
             } else if (e.type == SDL_MOUSEWHEEL) { if (e.wheel.y > 0 && sel > 0) sel--; else if (e.wheel.y < 0 && sel + 1 < n) sel++; }
@@ -214,10 +217,12 @@ int ui_launcher(const char *fwdir, char *out_fw, size_t outn, const char *messag
             case B_OPEN: app_open_folder(fwdir); break;
             case B_RESCAN: RESCAN(); snprintf(msg, sizeof msg, "Folder rescanned."); break;
             case B_CARDDIR: app_open_folder(carddir); break;
+            case B_FILES: mkdir(cardfiles, 0755); app_open_folder(cardfiles); snprintf(msg, sizeof msg, "Copy your kits and sounds into the folder that just opened, then click \"2  Build card\"."); break;
+            case B_EJECT: app_setting_set("card", "none"); snprintf(msg, sizeof msg, "Card ejected: the emulator will start without a memory card."); break;
             case B_NEWCARD: {
                 struct stat st;
                 if (stat(cardimg, &st) == 0) snprintf(msg, sizeof msg, "%s already exists. Delete or rename it first.", cardimg);
-                else if (app_make_blank_card(cardimg, 128) == 0) { app_setting_set("card", cardimg); snprintf(msg, sizeof msg, "Created a blank 128 MB card. Format it in the firmware: LOAD/SAVE page, F3 (UTILIT), F6 (DO IT)."); }
+                else if (app_make_blank_card(cardimg, 128) == 0) { app_setting_set("card", cardimg); snprintf(msg, sizeof msg, "Created an EMPTY 128 MB card (no kits on it). To get your files onto a card use steps 1 and 2 instead."); }
                 else snprintf(msg, sizeof msg, "Could not create %s.", cardimg);
                 break; }
             case B_BUILD: {
@@ -236,26 +241,34 @@ int ui_launcher(const char *fwdir, char *out_fw, size_t outn, const char *messag
         wrapped(ren, 24, 56, 1, dim, "Choose a firmware to run. Drop a firmware file onto this window to add it. No firmware is supplied with the emulator: use your own files.", 112);
         char line[PATH_MAX + 64]; { char tb[PATH_MAX + 8]; const char *fd = tilde(fwdir, tb, sizeof tb); size_t fl = strlen(fd); const char *tail = fl > 90 ? fd + fl - 88 : fd; snprintf(line, sizeof line, "Firmware folder: %s%s", fl > 90 ? "..." : "", tail); }
         text(ren, 24, 94, 1, dim, line, 112);
-        SDL_SetRenderDrawColor(ren, 40, 43, 50, 255); SDL_Rect box = { 24, 118, WIN_W - 48, 332 }; SDL_RenderFillRect(ren, &box);
+        SDL_SetRenderDrawColor(ren, 40, 43, 50, 255); SDL_Rect box = { 24, 118, WIN_W - 48, 222 }; SDL_RenderFillRect(ren, &box);
         if (n == 0) {
             int y = wrapped(ren, 44, 136, 2, white, "No firmware found.", 50) + 6;
             y = wrapped(ren, 44, y, 1, dim, "Drag a firmware file (.bin, .osx, .os3, .sos or an 8 MiB flash dump) onto this window,", 100);
             y = wrapped(ren, 44, y, 1, dim, "or copy it into the folder shown above and press R.", 100);
         }
-        for (int i = 0; i < n && i < 5; i++) {
-            SDL_Rect row = { 30, 128 + i * 64, WIN_W - 60, 60 };
+        for (int i = 0; i < n && i < 4; i++) {
+            SDL_Rect row = { 30, 128 + i * 52, WIN_W - 60, 48 };
             if (i == sel) { SDL_SetRenderDrawColor(ren, 70, 82, 40, 255); SDL_RenderFillRect(ren, &row); }
             SDL_Color c = ent[i].ok ? white : dim;
-            char nm[64]; snprintf(nm, sizeof nm, "%s", ent[i].name); text(ren, 44, 134 + i * 64, 2, c, nm, 28);
-            char k[96]; snprintf(k, sizeof k, "%s", kind_label(&ent[i])); text(ren, 44 + 29 * 16, 134 + i * 64 + 8, 1, ent[i].ok ? lime : warn, k, 24);
-            char nt[256]; snprintf(nt, sizeof nt, "%ld KB   %s", ent[i].size / 1024, ent[i].note); text(ren, 44, 134 + i * 64 + 36, 1, dim, nt, 108);
+            char nm[64]; snprintf(nm, sizeof nm, "%s", ent[i].name); text(ren, 44, 128 + i * 52 + 2, 2, c, nm, 28);
+            char k[96]; snprintf(k, sizeof k, "%s", kind_label(&ent[i])); text(ren, 44 + 29 * 16, 128 + i * 52 + 8, 1, ent[i].ok ? lime : warn, k, 24);
+            char nt[256]; snprintf(nt, sizeof nt, "%ld KB   %s", ent[i].size / 1024, ent[i].note); text(ren, 44, 128 + i * 52 + 31, 1, dim, nt, 108);
         }
+        if (n > 4) { char more[64]; snprintf(more, sizeof more, "%d of %d shown (Up/Down to choose)", sel + 1, n); text(ren, 600, 26, 1, dim, more, 0); }
+        // ---- the memory card panel ----
+        { SDL_SetRenderDrawColor(ren, 34, 38, 44, 255); SDL_Rect cb = { 24, 348, WIN_W - 48, 242 }; SDL_RenderFillRect(ren, &cb); }
+        text(ren, 36, 356, 1, lime, "YOUR KITS AND SOUNDS LIVE ON THE MEMORY CARD", 0);
+        { int y = 378;
+          y = wrapped(ren, 36, y, 1, white, "1. Click \"Card-files folder\" and copy your kits and sounds (.PGM .SND .WAV .SEQ .ALL ...) into it. Sub-folders are fine; a folder named AUTOLOAD is loaded by the firmware at start-up, as on the real unit.", 106);
+          y = wrapped(ren, 36, y, 1, white, "2. Click \"Build card\". This makes the card image from that folder (it replaces the current card; the old one is kept as card.img.bak). Do this again whenever you add files.", 106);
+          y = wrapped(ren, 36, y, 1, white, "3. Click Start. In the firmware press LOAD to see the card. Anything the firmware saves to the card is kept in the card image.", 106);
+          (void)y; }
         SDL_Color cc = cardpath[0] ? white : dim;
         if (cardpath[0]) { struct stat st; char tb2[PATH_MAX + 8]; const char *cp2 = tilde(cardpath, tb2, sizeof tb2); size_t cl = strlen(cp2); const char *ct = cl > 80 ? cp2 + cl - 78 : cp2; snprintf(line, sizeof line, "Card: %s%s (%ld MB)", cl > 80 ? "..." : "", ct, stat(cardpath, &st) == 0 ? (long)(st.st_size / 1048576) : 0L); }
-        else snprintf(line, sizeof line, "Card: none");
-        text(ren, 24, 460, 1, cc, line, 112);
-        wrapped(ren, 24, 484, 1, dim, "Cards: drop a .img file to use it as the CompactFlash card; N makes a blank card (format it in the firmware); B builds a card from the files in the card-files folder. Changes the firmware saves to the card are kept.", 112);
-        if (msg[0]) wrapped(ren, 24, 572, 1, warn, msg, 112);
+        else snprintf(line, sizeof line, "Card: none inserted (build one with steps 1 and 2)");
+        text(ren, 36, 496, 1, cc, line, 106);
+        if (msg[0]) wrapped(ren, 24, 600, 1, warn, msg, 112);
         for (int i = 0; i < nb; i++) {
             SDL_Rect b = { btns[i].x, btns[i].y, btns[i].w, btns[i].h }; SDL_SetRenderDrawColor(ren, btns[i].id == B_START ? 90 : 55, btns[i].id == B_START ? 120 : 60, btns[i].id == B_START ? 40 : 70, 255); SDL_RenderFillRect(ren, &b);
             text(ren, b.x + (b.w - (int)strlen(btns[i].label) * 8) / 2, b.y + 10, 1, white, btns[i].label, 0);
