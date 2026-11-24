@@ -153,15 +153,25 @@ In this document an OS image that is **larger than the stock OS area** is called
 >
 > An XL OS is written over the settings sector and then over the start of the internal memory (see the flash map below). Everything stored in the overwritten area is destroyed. On real hardware this corruption of the internal memory **can happen, and has happened with certain third-party XL firmware in the past**. A corrupted internal memory can make the unit **get stuck in a permanent boot loop**. Installing XL firmware on a real unit is entirely at your own risk, and a unit that no longer starts may not be recoverable.
 >
-> **Trying to recover (there is NO guarantee that this will work, and this project has not verified it on hardware):**
+> **If a real unit is stuck in a boot loop.** There is NO guarantee that any of this will work, and this project has not verified it on hardware. Part 1 gets the unit to start again; part 2 tries to repair the internal memory.
 >
-> 1. Prepare a CompactFlash card with the original Akai OS file (`MPC2500.BIN`, the file from Akai's OS update download) and, if you have it, the card's `INTERNAL` folder with the factory data and an `AUTOLOAD` folder with a memory save you trust (the manual: a folder named AUTOLOAD in the card's root is loaded automatically when the unit starts with the card inserted).
+> **Part 1: get the unit to start again**
 >
-> 2. Power the unit on with the card inserted so that the boot block's OS UPDATE screen installs the original Akai OS from the card. The boot block does this by itself when it finds no valid OS. The exact file name the boot-block updater needs on a real unit has not been verified by this project. If an OS is present but keeps restarting, the boot code of the emulated unit opens the OS UPDATE screen when one of the keys OVER DUB, STEP >, WINDOW, TAP TEMPO, 0, 2 or 5 is held while powering on; that combination has not been verified on a real unit.
+> 1. **Reinstall the original Akai OS.** Put the original Akai OS file (`MPC2500.BIN`, the file from Akai's OS update download) on a CompactFlash card and install it. If the unit restarts too quickly to use the LOAD page, the boot block's OS UPDATE screen is the route: it opens by itself when there is no valid OS, and the boot code of the emulated unit also opens it when one of the keys OVER DUB, STEP >, WINDOW, TAP TEMPO, 0, 2 or 5 is held while powering on (that combination has not been verified on a real unit; the exact file name the boot-block updater needs on a real unit has not been verified either).
 >
-> 3. Once the original OS runs, let the AUTOLOAD folder load, then save to INTERNAL MEMORY (SAVE ALL PROGRAMS & SAMPLES and SAVE ALL SEQS & SONGS). The manual says this erases the internal flash and replaces its data, which is how the factory data is restored. This may rebuild a valid internal memory.
+> 2. **Create an AUTOLOAD folder.** In the root of the CF card create a folder named `AUTOLOAD` and put a program, kit or sounds inside it.
 >
-> 4. If the original OS still restarts because of the damaged internal memory, a firmware that clears the internal-memory headers is reported to be needed first (run it once, then install the original Akai OS and repeat step 3). No such firmware is included here. If the unit cannot start the OS UPDATE screen at all, it needs a technician.
+> 3. **Restart the unit with the card inserted.** The Akai OS first looks for its auto load data in the internal memory, then moves on to the card, finds the AUTOLOAD folder, loads it and starts normally (the manual says a card with an AUTOLOAD folder is loaded at power-on whatever the Autoload setting is).
+>
+> 4. **Turn the Autoload feature off.** In the LOAD page, with the cursor in the "LOAD from" field, press WINDOW. In the Load Setup window set "Autoload" to OFF and press F4 (CLOSE). The unit no longer tries to load anything from the internal memory when it starts.
+>
+> The unit now starts normally. **But if you try to use the corrupted internal memory from the LOAD or SAVE pages, the unit will probably crash.** Stay away from the INTERNAL MEMORY choices until you have tried part 2.
+>
+> **Part 2: attempting to repair the internal memory (optional, again no guarantee)**
+>
+> 5. Put the factory data or your own backup on the card (the CF card that came with the unit has an `INTERNAL` folder with the factory presets and demo sequences). Load it, then save to INTERNAL MEMORY with SAVE ALL PROGRAMS & SAMPLES and SAVE ALL SEQS & SONGS. The manual says this erases the internal flash and replaces its data (at most 5 MB for programs and samples), which is how the factory data is restored. It may rebuild a valid internal memory.
+>
+> 6. If the unit crashes while doing this, a firmware that clears the internal-memory headers is reported to be needed first (run it once, then install the original Akai OS again and repeat from step 2). No such firmware is included here. If the unit cannot reach the OS UPDATE screen at all, it needs a technician. Once the internal memory works again you can turn Autoload back on in the same Load Setup window.
 
 The unit's 8 MiB flash chip is shared by the boot block, the OS, the settings and the **internal memory**. This is the map the emulator uses (it comes from tracing the real Akai OS and boot block):
 
