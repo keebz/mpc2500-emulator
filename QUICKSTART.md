@@ -32,6 +32,20 @@ Download the file for your system from the project's **Releases** page. It conta
 
 **Afterwards:** the chooser appears at every start with your last firmware already selected, so press **Enter** to go. `Ctrl+O` returns to the chooser from the running emulator, `Esc` quits. The panel controls are described in [section 4](#4-first-run); the other sections of this guide are for people building from source or testing firmware from the command line.
 
+
+## Where the app keeps your files (and how to uninstall)
+
+The first time the packaged app starts it creates a folder called **MPC2500 Emulator** in your **home folder**: `/Users/<you>/MPC2500 Emulator` on macOS, `/home/<you>/MPC2500 Emulator` on Linux. The chooser also shows this location at the bottom of its window.
+
+| Inside the folder | What it is |
+|---|---|
+| `firmware/` | the firmware files you added |
+| `card-files/` | the kits and sounds you want on the card (you fill this) |
+| `card/` | the card image the emulator uses (`card.img`, and `card.img.bak` after a rebuild) |
+| `settings.txt` | the app's remembered choices (last firmware, card) |
+
+**Deleting the app does not delete this folder**, and the folder is never removed automatically. To uninstall completely, delete the app *and* the `MPC2500 Emulator` folder. Copy out anything you want to keep first, such as the card image or your own firmware files. To make the app forget your choices without deleting your files, delete only `settings.txt`. Setting the environment variable `MPC2500_HOME` makes the app use a different folder.
+
 ---
 
 ## Contents

@@ -269,6 +269,8 @@ int ui_launcher(const char *fwdir, char *out_fw, size_t outn, const char *messag
         else snprintf(line, sizeof line, "Card: none inserted (build one with steps 1 and 2)");
         text(ren, 36, 496, 1, cc, line, 106);
         if (msg[0]) wrapped(ren, 24, 600, 1, warn, msg, 112);
+        if (appm) { char tb3[PATH_MAX + 8], ln[PATH_MAX + 160]; const char *ud = tilde(app_user_dir(), tb3, sizeof tb3);
+          snprintf(ln, sizeof ln, "Your files (firmware, card, settings) are in the folder %s - deleting the app does not delete it.", ud); text(ren, 24, WIN_H - 18, 1, dim, ln, 112); }
         for (int i = 0; i < nb; i++) {
             SDL_Rect b = { btns[i].x, btns[i].y, btns[i].w, btns[i].h }; SDL_SetRenderDrawColor(ren, btns[i].id == B_START ? 90 : 55, btns[i].id == B_START ? 120 : 60, btns[i].id == B_START ? 40 : 70, 255); SDL_RenderFillRect(ren, &b);
             text(ren, b.x + (b.w - (int)strlen(btns[i].label) * 8) / 2, b.y + 10, 1, white, btns[i].label, 0);
