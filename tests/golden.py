@@ -52,6 +52,14 @@ def scenarios():
                   forks={"base": mix + "dump a", "q1": mix + "qlink 3 1000;wait 20000000;qlink 3 0;wait 30000000;dump a",
                          "q2": mix + "qlink 0 1000;wait 20000000;qlink 0 0;wait 30000000;dump a", "q3": mix + "qlink 1 1000;wait 20000000;qlink 1 0;wait 30000000;dump a"},
                   differ=[("base_a.bin", "q1_a.bin"), ("base_a.bin", "q2_a.bin"), ("q1_a.bin", "q2_a.bin")]))
+    # Q-Link CUTOFF1 (REAL TIME) on pad A05 with Filter 1 = LOW PASS: Q1 at the top leaves the filter open, at the bottom it closes it (audio must differ)
+    flt = "tap 3 9;wait 30000000;padhit 5 100;wait 40000000;tap 3 2;wait 15000000;tap 3 2;wait 15000000;wheel 1 1;wait 40000000;"
+    sld = ("press 0 3;wait 20000000;padhit 1 100;wait 20000000;release 0 3;wait 80000000;tap 3 2;wait 20000000;padhit 5 100;wait 40000000;tap 3 2;wait 20000000;"
+           "wheel -1 1;wait 40000000;tap 3 2;wait 20000000;wheel 1 3;wait 40000000;")
+    hit5 = "audio 1;padhit 5 100;wait 15000000;audiosave a"
+    s.append(dict(name="qlink_filter", img="stock", boot=300_000_000, prelude=KIT_PRELUDE,
+                  forks={"open": flt + sld + "qlink 3 1000;wait 30000000;" + hit5, "closed": flt + sld + "qlink 3 1000;wait 30000000;qlink 3 0;wait 30000000;" + hit5},
+                  differ=[("open_a.wav", "closed_a.wav")]))
     s.append(dict(name="jv313_boot", img="jv313", boot=300_000_000, forks={"main": "wait 1000000;dump a"}))
     for k in ("xl390", "light100", "jv263"):
         s.append(dict(name=k + "_boot", img=k, boot=400_000_000, env={"FLASH_MODE": "full"}, forks={"main": "wait 1000000;dump a"}))

@@ -28,6 +28,10 @@
   "mid_a.wav": "e7a151e13b57719a",
   "right_a.wav": "ec7f5f52b965c351"
  },
+ "qlink_filter": {
+  "closed_a.wav": "fda0bb98495843c6",
+  "open_a.wav": "cc24089598eabce1"
+ },
  "qlink_mixer": {
   "base_a.bin": "2ef2bb841a0674cb",
   "q1_a.bin": "0f66767040327d86",
