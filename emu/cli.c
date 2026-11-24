@@ -17,7 +17,7 @@ static void usage(const char *prog) {
     printf("MPC2500 emulator\n\n"
            "usage: %s [options] [firmware-file]\n"
            "  With no firmware file, the emulator looks in ./firmware/ (or --firmware-dir) for the file to run.\n\n"
-           "  --firmware FILE     firmware to run: an Akai/JJOS build (.bin), a run-in-place image (.osx/.os3), an OS-only .SOS, or an 8 MiB flash dump\n"
+           "  --firmware FILE     firmware to run: an OS build (.bin), a run-in-place image (.osx/.os3), an OS-only .SOS, or an 8 MiB flash dump\n"
            "  --firmware-dir DIR  folder to search (default: firmware)\n"
            "  --donor FILE        full build to take the boot block from when running an OS-only .SOS\n"
            "  --card IMAGE        CompactFlash card image to insert (default: card/card.img if present)\n"
@@ -178,7 +178,7 @@ int main(int argc, char **argv) {
         printf("Firmware: %s - %s\n%s", fw.name, fw.kind, fw.report);
         if (unit_on && action == LAUNCH_FLASH) {            // like the real updater: only the OS window (sectors 1-14) is rewritten; boot block, settings and internal memory stay
             if (fw.run_in_place) {
-                snprintf(err, sizeof err, "%s is an OS image that does not fit the OS area the boot block and the Akai OS updater can write, so they refuse it, exactly as on the real unit. It must be installed by an OS that has its own installer (for example JJOS JV 3.13, from its Load page), and it overwrites part of the internal memory.", fw.name);
+                snprintf(err, sizeof err, "%s is an OS image that does not fit the OS area the boot block and the Akai OS updater can write, so they refuse it, exactly as on the real unit. It must be installed by an OS that has its own installer, and it overwrites part of the internal memory.", fw.name);
                 fprintf(stderr, "%s\n", err); fw_free(&fw);
                 if (window_mode) { need_pick = 1; fw_path = 0; pick_msg = err; donor = 0; continue; }
                 return 2;

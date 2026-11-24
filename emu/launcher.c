@@ -153,8 +153,8 @@ int ui_disclaimer(void) {
         SDL_SetRenderDrawColor(ren, 120, 40, 40, 255); SDL_RenderFillRect(ren, &r1);
         if (at_end) SDL_SetRenderDrawColor(ren, 70, 120, 50, 255); else SDL_SetRenderDrawColor(ren, 45, 48, 55, 255);
         SDL_RenderFillRect(ren, &r2);
-        ptext(ren, r1.x + (r1.w - pw(1, bdecl.label)) / 2, r1.y + 12, 1, white, bdecl.label, 0);
-        SDL_Color ac = at_end ? white : dim; ptext(ren, r2.x + (r2.w - pw(1, bacc.label)) / 2, r2.y + 12, 1, ac, bacc.label, 0);
+        ptext(ren, r1.x + (r1.w - pw(1, bdecl.label)) / 2, r1.y + (r1.h - 18) / 2, 1, white, bdecl.label, 0);
+        SDL_Color ac = at_end ? white : dim; ptext(ren, r2.x + (r2.w - pw(1, bacc.label)) / 2, r2.y + (r2.h - 18) / 2, 1, ac, bacc.label, 0);
         const char *shot = getenv("DISCLAIMER_SHOT"); static int sf; if (shot && ++sf == 6) { SDL_Surface *sfc = SDL_CreateRGBSurfaceWithFormat(0, WIN_W, WIN_H, 32, SDL_PIXELFORMAT_ARGB8888); SDL_RenderReadPixels(ren, 0, SDL_PIXELFORMAT_ARGB8888, sfc->pixels, sfc->pitch); SDL_SaveBMP(sfc, shot); SDL_FreeSurface(sfc); }
         SDL_RenderPresent(ren);
         SDL_Delay(8);
@@ -195,7 +195,7 @@ int ui_launcher(const char *fwdir, char *out_fw, size_t outn, const char *messag
         int do_action = 0;
         { static int fr; if (getenv("LAUNCHER_ENTER") && ++fr == 3) do_action = B_START; }
         { static int fr2; const char *acts = getenv("LAUNCHER_ACTIONS");        // test hook: one action per 4 frames, b = build card, e = eject, s = start
-          if (acts && ++fr2 % 4 == 0 && (size_t)(fr2 / 4 - 1) < strlen(acts)) { char c = acts[fr2 / 4 - 1]; do_action = c == 'b' ? B_BUILD : c == 'e' ? B_EJECT : c == 's' ? B_START : c == 'i' ? B_FLASH : c == 'm' ? B_RAM : c == 'h' ? B_HELP : 0; } }       // test hook: press Start after a few frames
+          if (acts && ++fr2 % 4 == 0 && (size_t)(fr2 / 4 - 1) < strlen(acts)) { char c = acts[fr2 / 4 - 1]; do_action = c == 'b' ? B_BUILD : c == 'e' ? B_EJECT : c == 's' ? B_START : c == 'i' ? B_FLASH : c == 'm' ? B_RAM : c == 'h' ? B_HELP : c == 'q' ? B_QUIT : 0; } }       // test hook: press Start after a few frames
         Btn btns[24]; int nb = 0;
         int by = WIN_H - 56, cy = 488;
         btns[nb++] = (Btn){ 36, cy, 210, 34, "1  Card-files folder (F)", B_FILES };
@@ -273,7 +273,7 @@ int ui_launcher(const char *fwdir, char *out_fw, size_t outn, const char *messag
             case B_FLASH:
                 if (!(n > 0 && ent[sel].ok)) { snprintf(msg, sizeof msg, n ? "That file is not a firmware image the emulator recognises." : "There is no firmware yet: drop a firmware file onto this window."); break; }
                 if (!direct_mode && !strcmp(ent[sel].kind, "test")) {
-                    snprintf(msg, sizeof msg, "%s is an OS image that does not fit the OS area the boot block and the Akai OS updater can write, so they refuse it, exactly like the real unit. It must be installed by an OS that has its own installer (for example JJOS JV 3.13, from its Load page), and it overwrites part of the internal memory. See the Quick Start. (Developer: D loads it directly.)", ent[sel].name);
+                    snprintf(msg, sizeof msg, "%s is an OS image that does not fit the OS area the boot block and the Akai OS updater can write, so they refuse it, exactly like the real unit. It must be installed by an OS that has its own installer (see \"Installing a custom OS that is larger than the stock OS area\" in the Quick Start), and it overwrites part of the internal memory. (Developer: D loads it directly.)", ent[sel].name);
                     break;
                 }
                 snprintf(out_fw, outn, "%s", ent[sel].path); app_setting_set("firmware", ent[sel].path);
@@ -285,6 +285,7 @@ int ui_launcher(const char *fwdir, char *out_fw, size_t outn, const char *messag
                 app_unit_reset(); confirm_reset = 0; snprintf(msg, sizeof msg, "Virtual unit erased. Select an Akai OS build and click Flash OS to create a new one."); break;
             }
             switch (do_action) {
+            case B_QUIT: result = 0; break;
             case B_OPEN: app_open_folder(fwdir); break;
             case B_RAM: ram128 = !ram128; app_setting_set("ram", ram128 ? "128" : "16");
                 snprintf(msg, sizeof msg, ram128 ? "Memory set to 128 MB (the EXM128 expansion module). The real unit ships with 16 MB." : "Memory set to the stock 16 MB, as shipped. A kit larger than the free sample memory will not load."); break;
@@ -318,7 +319,7 @@ int ui_launcher(const char *fwdir, char *out_fw, size_t outn, const char *messag
         ptext(ren, 24, 8, 2, lime, "MPC2500 Emulator", 0); ptext(ren, 24 + pw(2, "MPC2500 Emulator") + 12, 22, 1, dim, APP_VERSION, 0);
         if (unit_mode) {
             char ul[200]; snprintf(ul, sizeof ul, "Virtual unit: %s", unit_exists ? unitinfo : "none yet (no OS installed)"); ptext(ren, 24, 46, 3, lime, ul, 88);
-            ptext(ren, 24, 68, 1, dim, "Like the real unit: Flash OS installs an OS build that fits the stock OS area. Larger OSes need an OS with its own installer.", 112);
+            ptext(ren, 24, 68, 1, dim, "Flash OS installs an OS build that fits the stock OS area (larger OSes: see the Quick Start).", 112);
         } else pwrapped(ren, 24, 56, 1, dim, "Choose a firmware to run. Drop a firmware file onto this window to add it. No firmware is supplied with the emulator: use your own files.", 112);
         char line[PATH_MAX + 64]; { char tb[PATH_MAX + 8]; const char *fd = tilde(fwdir, tb, sizeof tb); size_t fl = strlen(fd); const char *tail = fl > 90 ? fd + fl - 88 : fd; snprintf(line, sizeof line, "Firmware folder: %s%s", fl > 90 ? "..." : "", tail); }
         ptext(ren, 24, 94, 1, dim, line, 112);
@@ -354,7 +355,7 @@ int ui_launcher(const char *fwdir, char *out_fw, size_t outn, const char *messag
           snprintf(ln, sizeof ln, "Your files (firmware, card, settings) are in the folder %s - deleting the app does not delete it.", ud); ptext(ren, 24, WIN_H - 18, 1, dim, ln, 112); }
         for (int i = 0; i < nb; i++) {
             SDL_Rect b = { btns[i].x, btns[i].y, btns[i].w, btns[i].h }; SDL_SetRenderDrawColor(ren, btns[i].id == B_START ? 90 : 55, btns[i].id == B_START ? 120 : 60, btns[i].id == B_START ? 40 : 70, 255); SDL_RenderFillRect(ren, &b);
-            ptext(ren, b.x + (b.w - pw(1, btns[i].label)) / 2, b.y + 10, 1, white, btns[i].label, 0);
+            ptext(ren, b.x + (b.w - pw(1, btns[i].label)) / 2, b.y + (b.h - 18) / 2, 1, white, btns[i].label, 0);
         }
         static int shot_frames; const char *shot = getenv("LAUNCHER_SHOT");        // test hook: save a screenshot after a few frames and quit
         if (shot && ++shot_frames == 5) { SDL_Surface *sf = SDL_CreateRGBSurfaceWithFormat(0, WIN_W, WIN_H, 32, SDL_PIXELFORMAT_ARGB8888); SDL_RenderReadPixels(ren, 0, SDL_PIXELFORMAT_ARGB8888, sf->pixels, sf->pitch); SDL_SaveBMP(sf, shot); SDL_FreeSurface(sf); result = 0; }

@@ -2,13 +2,13 @@
 
 A from-scratch software emulator of the **Akai MPC2500** (Hitachi/Renesas SH7727 "SH3-DSP" based sampler/sequencer), built to **run and test MPC2500 firmware on a computer** with the front panel, LCD, pads, wheel, Q-Links and audio output behaving as they do on the unit.
 
-It runs the stock Akai OS and third-party operating systems (JJOS family) unmodified, from the same firmware files you would put on a real MPC2500, so you can try a new or modified firmware build before it goes anywhere near hardware.
+It runs the stock Akai OS and third-party operating systems unmodified, from the same firmware files you would put on a real MPC2500, so you can try a new or modified firmware build before it goes anywhere near hardware.
 
 <p align="center">
   <img src="docs/images/panel.png" alt="MPC2500 Emulator running stock Akai OS 1.24 with a kit loaded" width="760">
 </p>
 
-> **Disclaimer — please read.** This software is provided **"as is", without warranty of any kind**, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose and non-infringement. The authors accept **no liability** for any claim, damages or other liability arising from the use of, or inability to use, this software. It is an independent, unofficial project: it is **not affiliated with, endorsed by or supported by Akai Professional, inMusic, Renesas, JJOS authors or any other firmware author**. "Akai", "Akai Professional", "MPC" and "MPC2500" are trademarks of their respective owners and are used here only to identify the hardware being emulated; the application carries no manufacturer logos. **No Akai or third-party firmware, manuals or other copyrighted material is included**; you must supply your own firmware files and are responsible for having the right to use them.
+> **Disclaimer — please read.** This software is provided **"as is", without warranty of any kind**, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose and non-infringement. The authors accept **no liability** for any claim, damages or other liability arising from the use of, or inability to use, this software. It is an independent, unofficial project: it is **not affiliated with, endorsed by or supported by Akai Professional, inMusic, Renesas or any firmware author**. "Akai", "Akai Professional", "MPC" and "MPC2500" are trademarks of their respective owners and are used here only to identify the hardware being emulated; the application carries no manufacturer logos. **No Akai or third-party firmware, manuals or other copyrighted material is included**; you must supply your own firmware files and are responsible for having the right to use them.
 >
 > **EXPERIMENTAL SOFTWARE — ONLY FOR PEOPLE WHO KNOW EXACTLY WHAT THEY ARE DOING.** The emulator shows the full notice below **every time it starts**; you must read it to the end and click **I accept**. If you decline (or close the window) the application exits immediately.
 >
@@ -49,8 +49,8 @@ This project models that machine, written from public documentation (the SH-3/SH
 
 ## Features
 - **Complete SH7727 CPU core**: the full SH-3 integer instruction set plus the SH3-DSP unit (parallel ALU/multiply/transfer instructions, X/Y memory, modulo addressing, hardware repeat loops). The integer core was checked against an independent model over all 65,536 opcodes; the DSP unit was checked against a second independent model over hundreds of thousands of random instructions (see [Accuracy and verification](#accuracy-and-verification)).
-- **Runs unmodified firmware**: stock Akai OS and the JJOS builds, from their original files (`.bin`, `.osx`, `.os3`, OS-only `.SOS` with a boot-block donor, or an 8 MB flash dump).
-- **A virtual unit that installs firmware like the real one**: the flash chip is kept in a file, the firmware's own Load-page installers decide what is accepted, and an OS larger than the stock OS area has to be installed by an OS with its own installer (JJOS JV 3.13 is the example used here), exactly as on the hardware. A developer direct-load mode is available for quick tests.
+- **Runs unmodified firmware**: stock Akai OS and third-party OS builds, from their original files (`.bin`, `.osx`, `.os3`, OS-only `.SOS` with a boot-block donor, or an 8 MB flash dump).
+- **A virtual unit that installs firmware like the real one**: the flash chip is kept in a file, the firmware's own Load-page installers decide what is accepted, and an OS larger than the stock OS area has to be installed by an OS with its own installer, exactly as on the hardware. A developer direct-load mode is available for quick tests.
 - **Real front panel**: every button, 16 velocity-sensitive pads (mouse buttons choose the velocity), a DATA wheel (mouse wheel, drag or `[` `]`), four Q-Link controls that the firmware reads through the real ADC path, LEDs driven the way the firmware drives them, and a keyboard map for the whole panel.
 - **Audio**: the firmware's own 32-voice sample engine runs on the emulated DSP; its SIOF output is decoded to stereo and played through your sound card. Panning, filters, tuning, polyphony and stereo samples work.
 - **Storage**: a CompactFlash card image in FAT16 (including `AUTOLOAD`), the stock 16 MB of memory by default (a 128 MB expansion can be selected), and an 8 MB AM29LV641DL-style flash with real command sequences, so firmware that writes flash behaves realistically.
@@ -100,15 +100,13 @@ The files below boot to their user interface in the emulator. Only the firmware 
 | Firmware | File type | Result |
 |---|---|---|
 | Akai OS 1.24 (stock) | full build (`.bin`) | Boots, runs, loads/saves to the card, plays samples, Q-Links work |
-| JJOS "JV" 3.13 | full build (`.bin`) | Boots to its own main page (time-code display) |
-| JJOS XL 3.90 | run-in-place test image (`.osx`) | Installs from JV 3.13's Load page in the virtual unit (it is larger than the stock OS area), then boots to the XL main page; Q-Links work with its filters |
-| JJOS Light 1.00 | run-in-place test image (`.osx`) | Boots to its welcome dialog |
-| JJOS 3 (OS3) 2.63 | run-in-place test image (`.os3`) | Boots to its welcome dialog |
+| Third-party OS build that fits the stock OS area | full build (`.bin`) | Boots to its own main page (time-code display) |
+| Third-party OS larger than the stock OS area | run-in-place test image (`.osx`) | Installed in the virtual unit through an OS with its own installer (see below), then boots to its main page; Q-Links work with its filters |
+| Other oversized third-party OS images | `.osx`, `.os3` | Install the same way; they boot to their welcome dialog or main page |
 
 <p>
-  <img src="docs/images/lcd_jjos_jv313.png" width="31%" alt="JJOS 3.13">
-  <img src="docs/images/lcd_jjos_xl390.png" width="31%" alt="JJOS XL 3.90">
-  <img src="docs/images/lcd_jjos_os3.png" width="31%" alt="JJOS OS3 2.63">
+  <img src="docs/images/lcd_custom_os_fits.png" width="48%" alt="A third-party OS that fits the stock OS area">
+  <img src="docs/images/lcd_custom_os_oversized.png" width="48%" alt="A third-party OS larger than the stock OS area">
 </p>
 
 "Boots" means the regression suite reaches and checks the screen shown; it does not mean every feature of every firmware has been exercised. Please report differences you find against real hardware.
@@ -146,7 +144,7 @@ The packaged app behaves like a real MPC2500, including the way firmware gets on
 
 The real rules are enforced by the firmware itself, which runs unmodified. The chooser's **Flash OS** only accepts an OS that fits the stock OS area, exactly as the boot block and the Akai updater do. A larger OS has to go in through an OS with its own installer; see the next section for what that does to the internal memory.
 
-### Custom firmware that is larger than the stock OS area
+### Installing a custom OS that is larger than the stock OS area (JJOS as the example)
 
 The unit's 8 MiB flash chip is shared by the boot block, the OS, the settings and the **internal memory**. This is the map the emulator uses (it comes from tracing the real Akai OS and boot block):
 
@@ -282,7 +280,7 @@ NOTES.md    engineering notes: what was learned about the hardware and how
 - Output level of the audio is not calibrated against the real DAC (`--audio-shift`).
 - The flash chip's ID codes could not be verified against a datasheet (no shipped firmware reads them).
 - Instruction timing is an average, not cycle accurate: busy-wait loops, or firmware that depends on exact bus timing, can behave differently from the unit.
-- Installing through the firmware's own Load-page updaters is verified (stock OS to JV 3.13 to XL, Light and OS3). Not covered: the boot-block recovery updater (`MPC2500.SOS`, used when no valid OS is present) from the chooser, power loss in the middle of an install, and any firmware or installer other than the ones above.
+- Installing through the firmware's own Load-page updaters is verified (stock OS, then an OS with its own installer, then oversized third-party images). Not covered: the boot-block recovery updater (`MPC2500.SOS`, used when no valid OS is present) from the chooser, power loss in the middle of an install, and any firmware or installer other than the ones above.
 
 ## Documentation
 - **[QUICKSTART.md](QUICKSTART.md)** — installation and a walk-through for each firmware type.

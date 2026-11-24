@@ -187,7 +187,7 @@ static int in_rect(const SDL_Rect *r, int x, int y) { return x >= r->x && x < r-
 void ui_draw_text(SDL_Renderer *r, int x, int y, int scale, SDL_Color c, const char *s);        // launcher.c
 int ui_text_width(int scale, const char *s);
 static int show_help;
-static SDL_Rect tb_help = { 826, 27, 104, 20 }, tb_fw = { 938, 27, 136, 20 };                      // buttons on the top bezel, in panel units
+static SDL_Rect tb_help = { 826, 24, 104, 24 }, tb_fw = { 938, 24, 136, 24 };                      // buttons on the top bezel, in panel units
 static void draw_toolbar(SDL_Renderer *ren, int hx, int hy) {
     SDL_Color fg = { 200, 205, 215, 255 };
     struct { SDL_Rect r; const char *l; } b[2] = { { tb_help, "Cheat Sheet" }, { tb_fw, "Firmware / Card" } };
@@ -195,7 +195,7 @@ static void draw_toolbar(SDL_Renderer *ren, int hx, int hy) {
         int hot = in_rect(&b[i].r, hx, hy);
         SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND); SDL_SetRenderDrawColor(ren, hot ? 90 : 52, hot ? 100 : 56, hot ? 60 : 64, 235); SDL_RenderFillRect(ren, &b[i].r);
         SDL_SetRenderDrawColor(ren, 110, 116, 128, 255); SDL_RenderDrawRect(ren, &b[i].r);
-        ui_draw_text(ren, b[i].r.x + (b[i].r.w - ui_text_width(1, b[i].l)) / 2, b[i].r.y, 1, fg, b[i].l);
+        ui_draw_text(ren, b[i].r.x + (b[i].r.w - ui_text_width(1, b[i].l)) / 2, b[i].r.y + 2, 1, fg, b[i].l);
     }
 }
 static void draw_cheatsheet(SDL_Renderer *ren, int W, int H) {

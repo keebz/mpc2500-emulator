@@ -197,8 +197,8 @@ The emulator accepts the same files you would put on a real MPC2500. Put them in
 
 | File | What it is | Where it comes from |
 |---|---|---|
-| `*.bin` (about 0.8–0.9 MB) | **Full OS build** — boot block + OS, as in the OS update package | Akai's OS update, or a JJOS release |
-| `*.osx`, `*.os3` (1.2–1.5 MB) | **Run-in-place test images** whose header reads `MPC2500 TEST ...` | JJOS XL / Light / OS3 distributions |
+| `*.bin` (about 0.8–0.9 MB) | **Full OS build** — boot block + OS, as in the OS update package | Akai's OS update, or a third-party OS release |
+| `*.osx`, `*.os3` (1.2–1.5 MB) | **Run-in-place test images** whose header reads `MPC2500 TEST ...` | Third-party OS releases that are larger than the stock OS area |
 | `*.sos` | **OS only** (no boot block) | OS update packages; needs a full build next to it as a donor |
 | 8 MiB file | A **whole-flash dump** | A flash backup |
 
@@ -391,25 +391,21 @@ For CUTOFF and RESO the pad's filter must be switched on in `PROGRAM` → `F2` (
 
 ![Program filter](docs/images/lcd_program_filter.png)
 
-### 7.2 JJOS full builds (`.bin`)
-Same as stock:
+### 7.2 Third-party OS builds that fit the stock OS area (`.bin`)
+Same as stock: in the chooser select the file and click **Flash OS**. From source, for a quick developer check:
 ```bash
-./run_live.sh --firmware firmware/mpc2500_jv313.bin
+./run_live.sh --firmware firmware/custom_os.bin
 ```
-![JJOS 3.13](docs/images/lcd_jjos_jv313.png)
+![A third-party OS that fits the stock OS area](docs/images/lcd_custom_os_fits.png)
 
-### 7.3 Run-in-place test images (`.osx`, `.os3`)
-In the packaged app these are installed from JV 3.13 (see *Installing a custom OS that is larger than the stock OS area*). From source, for a quick developer check, the image can be launched directly, skipping the installer:
+### 7.3 Oversized firmware (`.osx`, `.os3`)
+An OS image larger than the stock OS area is not accepted by the boot block or the stock updater. In the packaged app it is installed through an OS that has its own installer (see *Installing a custom OS that is larger than the stock OS area*). From source, for a quick developer check, the image can be launched directly, skipping the installer:
 ```bash
-./run_live.sh --firmware firmware/mpc2500_xl390.osx
+./run_live.sh --firmware firmware/oversized_os.osx
 ```
-![JJOS XL 3.90](docs/images/lcd_jjos_xl390.png)
+![An OS larger than the stock OS area](docs/images/lcd_custom_os_oversized.png)
 
 The loader prints a warning such as *"this image overwrites flash sector 15 (settings) and the internal-data sectors"*. That only affects the **emulator's in-memory flash**; every new launch starts clean. It also reminds you that the stock updater cannot install such an image on a real unit.
-
-The Light and OS3 images open with a welcome dialog; press `F6` (OK) to continue:
-
-![JJOS OS3](docs/images/lcd_jjos_os3.png)
 
 ### 7.4 OS-only `.SOS` files
 These contain only the operating system. Give the emulator a full build with a valid boot block to take it from:
