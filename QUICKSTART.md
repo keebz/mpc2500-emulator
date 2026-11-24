@@ -182,9 +182,9 @@ In this guide an OS image that is **larger than the stock OS area** is called an
 >
 > **Part 1: get the unit to start again**
 >
-> 1. **Reinstall the original Akai OS.** Put the original Akai OS file (`MPC2500.BIN`, the file from Akai's OS update download) on a CompactFlash card and install it. If the unit restarts too quickly to use the LOAD page, the boot block's OS UPDATE screen is the route: it opens by itself when there is no valid OS, and the boot code of the emulated unit also opens it when one of the keys OVER DUB, STEP >, WINDOW, TAP TEMPO, 0, 2 or 5 is held while powering on (that combination has not been verified on a real unit; the exact file name the boot-block updater needs on a real unit has not been verified either).
+> 1. **Reinstall the original Akai OS.** Copy the original Akai OS file (`MPC2500.BIN`, from Akai's OS update download) to the root of a CompactFlash card and insert the card. Hold down the WINDOW button, power the unit on, and press F6 (DO IT) when it asks whether to install the OS from the card.
 >
-> 2. **Create an AUTOLOAD folder.** In the root of the CF card create a folder named `AUTOLOAD` and put a program, kit or sounds inside it.
+> 2. **Create an AUTOLOAD folder.** In the root of the same card create a folder named `AUTOLOAD` and put a PGM and a KIT inside it.
 >
 > 3. **Restart the unit with the card inserted.** The Akai OS first looks for its auto load data in the internal memory, then moves on to the card, finds the AUTOLOAD folder, loads it and starts normally (the manual says a card with an AUTOLOAD folder is loaded at power-on whatever the Autoload setting is).
 >
