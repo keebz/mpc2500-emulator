@@ -27,6 +27,8 @@ the folder's "firmware" sub-folder), pick it in the list and press Enter.
 
 No firmware is included - you need your own MPC2500 firmware files.
 This software is provided "as is", without warranty of any kind. It is unofficial and not affiliated with Akai Professional.
+EXPERIMENTAL SOFTWARE: a notice must be accepted every time the emulator starts. Testing a firmware here gives no guarantee it will work on real hardware,
+and installing firmware on a real unit can damage it beyond repair. See README.md for the full text.
 TXT
 mkdir -p "$DIST"; (cd "$DIST" && tar czf "$NAME.tar.gz" "$NAME"); echo "wrote $DIST/$NAME.tar.gz"
 # ---- optional AppImage ----
