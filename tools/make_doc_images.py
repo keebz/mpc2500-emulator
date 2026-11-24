@@ -53,9 +53,9 @@ def screens():
     lcd_png(f"{t}/loading_a.bin", "lcd_autoload_loading.png"); lcd_png(f"{t}/done_a.bin", "lcd_autoload_done.png")
     # --- the other firmware families ---
     for fname, path, png, env in (("jv313", os.path.join(FW, "MPC2500", "mpc2500_jv313.bin"), "lcd_custom_os_fits.png", {}),
-                                  ("xl390", os.path.join(FW, "MPC2500", "mpc2500_xl390.osx"), "lcd_custom_os_oversized.png", {"FLASH_MODE": "full"}),
-                                  ("light100", os.path.join(FW, "MPC2500", "mpc2500_light100.osx"), "lcd_custom_os_oversized2.png", {"FLASH_MODE": "full"}),
-                                  ("jv263", os.path.join(FW, "MPC2500", "mpc2500_jv263.os3"), "lcd_custom_os_oversized3.png", {"FLASH_MODE": "full"})):
+                                  ("xl390", os.path.join(FW, "MPC2500", "mpc2500_xl390.osx"), "lcd_xl_os.png", {"FLASH_MODE": "full"}),
+                                  ("light100", os.path.join(FW, "MPC2500", "mpc2500_light100.osx"), "lcd_xl_os2.png", {"FLASH_MODE": "full"}),
+                                  ("jv263", os.path.join(FW, "MPC2500", "mpc2500_jv263.os3"), "lcd_xl_os3.png", {"FLASH_MODE": "full"})):
         if os.path.exists(path):
             t = run_exp(path, [f"{fname}=wait 1000000;dump a"], boot=400_000_000, env=env)
             lcd_png(f"{t}/{fname}_a.bin", png)

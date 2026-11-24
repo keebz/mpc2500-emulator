@@ -32,7 +32,9 @@ Download the file for your system from the project's **Releases** page. It conta
 
 **Afterwards:** the chooser appears at every start; press **Enter** (**Power on**) to start the unit as you left it, with its installed OS, settings and internal memory. `Ctrl+O` returns to the chooser from the running emulator, `Esc` quits. The panel controls are described in [section 4](#4-first-run); the other sections of this guide are for people building from source or testing firmware from the command line.
 
-### Installing a custom OS that is larger than the stock OS area (JJOS as the example)
+### Installing an Extra Large (XL) OS
+
+In this guide an OS image that is **larger than the stock OS area** is called an **Extra Large (XL)** OS, or XL firmware for short.
 
 The unit's 8 MiB flash chip is shared by the boot block, the OS, the settings and the **internal memory**. This is the map the emulator uses (it comes from tracing the real Akai OS and boot block):
 
@@ -45,37 +47,37 @@ The unit's 8 MiB flash chip is shared by the boot block, the OS, the settings an
 
 **The boot block and the stock Akai OS updater only erase and write the OS area** (`0x010000` - `0x0EFFFF`). They refuse any OS image that does not fit in it (the stock OS answers "File too big: Can't execute!!"). This is how the real unit behaves, and the emulator shows it because the real firmware code is running.
 
-An OS **larger than the OS area** can still be installed, but only by an OS that contains its **own installer** and writes beyond the stock limit. It cannot be done by the stock updater. When such an installer runs, the image is laid out contiguously in flash starting at `0x010000`, and **whatever does not fit in the OS area overwrites the flash that follows it**:
+An XL OS **larger than the OS area** can still be installed, but only by an OS that contains its **own installer** and writes beyond the stock limit. It cannot be done by the stock updater. When such an installer runs, the image is laid out contiguously in flash starting at `0x010000`, and **whatever does not fit in the OS area overwrites the flash that follows it**:
 
 1. The first 917,488 bytes of the image fill the OS area.
 2. Next it **erases and overwrites the settings sector** (`0x0F0000`). The new OS then writes its own settings there.
 3. The rest of the image **erases and overwrites the internal memory, starting at its very first sector (`0x100000`) and continuing upwards, one 64 KiB sector at a time**, for as many sectors as the image needs. That includes the stock OS's sequences-and-songs header.
 
-So an oversized OS takes its extra space **out of the internal memory**. Everything stored in the overwritten sectors is destroyed, the start of the internal memory is no longer a valid stock layout, and the unit's own warning says so ("All memory contents will be lost!!"). Sectors beyond the end of the image are not erased by the installer, but with the header at `0x100000` gone they are no longer reachable by the stock OS.
+So an XL OS takes its extra space **out of the internal memory**. Everything stored in the overwritten sectors is destroyed, the start of the internal memory is no longer a valid stock layout, and the unit's own warning says so ("All memory contents will be lost!!"). Sectors beyond the end of the image are not erased by the installer, but with the header at `0x100000` gone they are no longer reachable by the stock OS.
 
-Measured on the emulated unit with firmware that does this (JJOS is the example here; the procedure is not specific to JJOS):
+Measured on the emulated unit with real XL firmware (the procedure applies to any XL OS):
 
 | Image | Size | Flash it occupies | Beyond the OS area | Internal-memory sectors overwritten |
 |---|---|---|---|---|
 | Akai OS 1.24 (stock) | 784,916 B | `0x010000` - `0x0BFA13` | none | none |
-| JJOS JV 3.13 | 894,040 B | `0x010000` - `0x0DA457` | none (fits) | none |
-| JJOS Light 1.00 | 1,175,052 B | `0x010000` - `0x11EE0B` | 192,028 B | sectors 16-17 (`0x100000` - `0x11FFFF`, 128 KiB) |
-| JJOS OS3 2.63 | 1,331,048 B | `0x010000` - `0x144F67` | 348,024 B | sectors 16-20 (`0x100000` - `0x14FFFF`, 320 KiB) |
-| JJOS XL 3.90 | 1,503,360 B | `0x010000` - `0x16F07F` | 520,336 B | sectors 16-22 (`0x100000` - `0x16FFFF`, 448 KiB) |
+| A third-party OS that fits the OS area | 894,040 B | `0x010000` - `0x0DA457` | none (fits) | none |
+| XL OS, smallest | 1,175,052 B | `0x010000` - `0x11EE0B` | 192,028 B | sectors 16-17 (`0x100000` - `0x11FFFF`, 128 KiB) |
+| XL OS, medium | 1,331,048 B | `0x010000` - `0x144F67` | 348,024 B | sectors 16-20 (`0x100000` - `0x14FFFF`, 320 KiB) |
+| XL OS, largest | 1,503,360 B | `0x010000` - `0x16F07F` | 520,336 B | sectors 16-22 (`0x100000` - `0x16FFFF`, 448 KiB) |
 
-For XL 3.90 the installer was traced in detail: it erased 23 consecutive sectors, `0x010000` - `0x17FFFF` (the OS area, the settings sector and 8 internal-memory sectors), and programmed `0x010000` - `0x16F07F` plus its settings. The table lists the sectors that receive image data; an installer may erase more than it writes.
+For the largest XL OS above the installer was traced in detail: it erased 23 consecutive sectors, `0x010000` - `0x17FFFF` (the OS area, the settings sector and 8 internal-memory sectors), and programmed `0x010000` - `0x16F07F` plus its settings. The table lists the sectors that receive image data; an installer may erase more than it writes.
 
 **Going back to the stock OS.** Once the start of the internal memory has been overwritten, the stock OS no longer finds valid internal-memory headers. The recovery reported for the real unit is: run a "clear internal" OS once (it erases the two header sectors), install the normal Akai OS, then restore your internal data by loading your INTERNAL folder from the card and saving it to INTERNAL MEMORY. No such tool is included here.
 
-**The procedure, for any such firmware.** (1) Put an OS with its own installer on the unit (JJOS JV 3.13 is one: it fits the OS area, so the stock updater accepts it). (2) Put the oversized image on the card. (3) Install it from that OS's Load page. (4) Power cycle. In the emulator's virtual unit this runs the real installer code: with JJOS the file must be named with a `.OSX` extension on the card (JV 3.13 does not list an OS3 file named `.OS3`), and you press `F6` (DO IT) on the Load page, then `F5` (DO IT) in the update dialog. This sequence is covered by the automated test `tests/install_chain.py` and compared byte for byte with the firmware files.
+**The procedure, for any such firmware.** (1) Put an OS with its own installer on the unit (it must fit the OS area, so that the stock updater accepts it). (2) Put the XL image on the card. (3) Install it from that OS's Load page. (4) Power cycle. In the emulator's virtual unit this runs the real installer code: the installer in the test firmware lists an XL file only when it is named with a `.OSX` extension on the card (a file named `.OS3` is not listed), and you press `F6` (DO IT) on the Load page, then `F5` (DO IT) in the update dialog. This sequence is covered by the automated test `tests/install_chain.py` and compared byte for byte with the firmware files.
 
 *How the real unit behaves after such an install, beyond what the firmware itself shows, has not been verified on hardware.*
 
-In the chooser: select an OS that fits (for example JJOS JV 3.13) and click **Flash OS**; put the oversized image in the **card-files** folder (for JJOS, name it with a `.OSX` extension), click **Build card**, **Power on**, then follow the procedure above. Selecting the oversized image in **Flash OS** is refused with an explanation.
+In the chooser: select an OS that fits and has its own installer, and click **Flash OS**; put the XL image in the **card-files** folder (name it with a `.OSX` extension), click **Build card**, **Power on**, then follow the procedure above. Selecting the XL image in **Flash OS** is refused with an explanation.
 
 **Developer direct load** (button or `D`) skips all of this and loads any image straight into a temporary flash: handy for quick checks, but it is not how the hardware behaves and nothing is kept.
 
-> Installing an oversized OS overwrites the start of the virtual unit's internal memory, just as on a real unit (see the table above). To keep a copy, copy `unit.flash` first.
+> Installing an XL OS overwrites the start of the virtual unit's internal memory, just as on a real unit (see the table above). To keep a copy, copy `unit.flash` first.
 
 
 ## Memory and card size
@@ -198,7 +200,7 @@ The emulator accepts the same files you would put on a real MPC2500. Put them in
 | File | What it is | Where it comes from |
 |---|---|---|
 | `*.bin` (about 0.8–0.9 MB) | **Full OS build** — boot block + OS, as in the OS update package | Akai's OS update, or a third-party OS release |
-| `*.osx`, `*.os3` (1.2–1.5 MB) | **Run-in-place test images** whose header reads `MPC2500 TEST ...` | Third-party OS releases that are larger than the stock OS area |
+| `*.osx`, `*.os3` (1.2–1.5 MB) | **Run-in-place test images** whose header reads `MPC2500 TEST ...` | XL OS releases (larger than the stock OS area) |
 | `*.sos` | **OS only** (no boot block) | OS update packages; needs a full build next to it as a donor |
 | 8 MiB file | A **whole-flash dump** | A flash backup |
 
@@ -208,7 +210,7 @@ Check what the emulator recognises:
 $ emu/mpc2500emu --list
 firmware folder: firmware
   mpc2500.bin                          784916 bytes  build        MPC2500         Version=1.24   30-July-2
-  mpc2500_xl390.osx                   1503360 bytes  test         MPC2500 TEST       Ver.:3.90
+  xl_os.osx                           1503360 bytes  test         MPC2500 TEST       Ver.:3.90
 ```
 (`--firmware-dir DIR` lists another folder.)
 
@@ -398,12 +400,12 @@ Same as stock: in the chooser select the file and click **Flash OS**. From sourc
 ```
 ![A third-party OS that fits the stock OS area](docs/images/lcd_custom_os_fits.png)
 
-### 7.3 Oversized firmware (`.osx`, `.os3`)
-An OS image larger than the stock OS area is not accepted by the boot block or the stock updater. In the packaged app it is installed through an OS that has its own installer (see *Installing a custom OS that is larger than the stock OS area*). From source, for a quick developer check, the image can be launched directly, skipping the installer:
+### 7.3 XL firmware (`.osx`, `.os3`)
+An XL OS image (larger than the stock OS area) is not accepted by the boot block or the stock updater. In the packaged app it is installed through an OS that has its own installer (see *Installing an Extra Large (XL) OS*). From source, for a quick developer check, the image can be launched directly, skipping the installer:
 ```bash
-./run_live.sh --firmware firmware/oversized_os.osx
+./run_live.sh --firmware firmware/xl_os.osx
 ```
-![An OS larger than the stock OS area](docs/images/lcd_custom_os_oversized.png)
+![An XL OS](docs/images/lcd_xl_os.png)
 
 The loader prints a warning such as *"this image overwrites flash sector 15 (settings) and the internal-data sectors"*. That only affects the **emulator's in-memory flash**; every new launch starts clean. It also reminds you that the stock updater cannot install such an image on a real unit.
 

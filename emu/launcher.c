@@ -273,7 +273,7 @@ int ui_launcher(const char *fwdir, char *out_fw, size_t outn, const char *messag
             case B_FLASH:
                 if (!(n > 0 && ent[sel].ok)) { snprintf(msg, sizeof msg, n ? "That file is not a firmware image the emulator recognises." : "There is no firmware yet: drop a firmware file onto this window."); break; }
                 if (!direct_mode && !strcmp(ent[sel].kind, "test")) {
-                    snprintf(msg, sizeof msg, "%s is an OS image that does not fit the OS area the boot block and the Akai OS updater can write, so they refuse it, exactly like the real unit. It must be installed by an OS that has its own installer (see \"Installing a custom OS that is larger than the stock OS area\" in the Quick Start), and it overwrites part of the internal memory. (Developer: D loads it directly.)", ent[sel].name);
+                    snprintf(msg, sizeof msg, "%s is an Extra Large (XL) OS image: it does not fit the OS area the boot block and the Akai OS updater can write, so they refuse it, exactly like the real unit. It must be installed by an OS that has its own installer (see \"Installing an Extra Large (XL) OS\" in the Quick Start), and it overwrites part of the internal memory. (Developer: D loads it directly.)", ent[sel].name);
                     break;
                 }
                 snprintf(out_fw, outn, "%s", ent[sel].path); app_setting_set("firmware", ent[sel].path);

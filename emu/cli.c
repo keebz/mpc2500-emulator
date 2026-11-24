@@ -178,7 +178,7 @@ int main(int argc, char **argv) {
         printf("Firmware: %s - %s\n%s", fw.name, fw.kind, fw.report);
         if (unit_on && action == LAUNCH_FLASH) {            // like the real updater: only the OS window (sectors 1-14) is rewritten; boot block, settings and internal memory stay
             if (fw.run_in_place) {
-                snprintf(err, sizeof err, "%s is an OS image that does not fit the OS area the boot block and the Akai OS updater can write, so they refuse it, exactly as on the real unit. It must be installed by an OS that has its own installer, and it overwrites part of the internal memory.", fw.name);
+                snprintf(err, sizeof err, "%s is an Extra Large (XL) OS image: it does not fit the OS area the boot block and the Akai OS updater can write, so they refuse it, exactly as on the real unit. It must be installed by an OS that has its own installer, and it overwrites part of the internal memory.", fw.name);
                 fprintf(stderr, "%s\n", err); fw_free(&fw);
                 if (window_mode) { need_pick = 1; fw_path = 0; pick_msg = err; donor = 0; continue; }
                 return 2;

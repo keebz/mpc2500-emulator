@@ -106,7 +106,7 @@ The files below boot to their user interface in the emulator. Only the firmware 
 
 <p>
   <img src="docs/images/lcd_custom_os_fits.png" width="48%" alt="A third-party OS that fits the stock OS area">
-  <img src="docs/images/lcd_custom_os_oversized.png" width="48%" alt="A third-party OS larger than the stock OS area">
+  <img src="docs/images/lcd_xl_os.png" width="48%" alt="A third-party OS larger than the stock OS area">
 </p>
 
 "Boots" means the regression suite reaches and checks the screen shown; it does not mean every feature of every firmware has been exercised. Please report differences you find against real hardware.
