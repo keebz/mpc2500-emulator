@@ -30,55 +30,9 @@ Download the file for your system from the project's **Releases** page. It conta
 
    Other options: **Blank card** makes an *empty* card (nothing on it), **Eject** starts without a card, **Show card** opens the folder holding the card image, and you can drop an existing card image (`.img`) onto the window to use it. Whatever the firmware saves to the card is kept in the card image.
 
-**Afterwards:** the chooser appears at every start; press **Enter** (**Power on**) to start the unit as you left it, with its installed OS, settings and internal memory. `Ctrl+O` returns to the chooser from the running emulator, `Esc` quits. The panel controls are described in [section 4](#4-first-run); the other sections of this guide are for people building from source or testing firmware from the command line.
+**Installing an XL OS** (one larger than the stock OS area) is different from a normal install, and it overwrites internal memory: read [section 4](#4-installing-an-extra-large-xl-os) first.
 
-### Installing an Extra Large (XL) OS
-
-In this guide an OS image that is **larger than the stock OS area** is called an **Extra Large (XL)** OS, or XL firmware for short.
-
-The unit's 8 MiB flash chip is shared by the boot block, the OS, the settings and the **internal memory**. This is the map the emulator uses (it comes from tracing the real Akai OS and boot block):
-
-| Flash address | Size | What lives there |
-|---|---|---|
-| `0x000000` - `0x00FFFF` | 64 KiB | Boot block. Never rewritten by any updater |
-| `0x010000` - `0x0EFFFF` | 14 sectors of 64 KiB (917,504 bytes) | **The OS area.** The last 16 bytes hold the OS checksum (at `0x0EFFF0`), so an OS can be at most **917,488 bytes** |
-| `0x0F0000` - `0x0FFFFF` | 1 sector | The OS's settings |
-| `0x100000` and up | to the end of the chip (`0x7FFFFF`) | **Internal memory** (sequences, songs, programs, samples). The stock OS keeps the header of its sequences-and-songs area at `0x100000` (sector 16) and the header of its programs-and-samples area at `0x2A0000` (sector 42) |
-
-**The boot block and the stock Akai OS updater only erase and write the OS area** (`0x010000` - `0x0EFFFF`). They refuse any OS image that does not fit in it (the stock OS answers "File too big: Can't execute!!"). This is how the real unit behaves, and the emulator shows it because the real firmware code is running.
-
-An XL OS **larger than the OS area** can still be installed, but only by an OS that contains its **own installer** and writes beyond the stock limit. It cannot be done by the stock updater. When such an installer runs, the image is laid out contiguously in flash starting at `0x010000`, and **whatever does not fit in the OS area overwrites the flash that follows it**:
-
-1. The first 917,488 bytes of the image fill the OS area.
-2. Next it **erases and overwrites the settings sector** (`0x0F0000`). The new OS then writes its own settings there.
-3. The rest of the image **erases and overwrites the internal memory, starting at its very first sector (`0x100000`) and continuing upwards, one 64 KiB sector at a time**, for as many sectors as the image needs. That includes the stock OS's sequences-and-songs header.
-
-So an XL OS takes its extra space **out of the internal memory**. Everything stored in the overwritten sectors is destroyed, the start of the internal memory is no longer a valid stock layout, and the unit's own warning says so ("All memory contents will be lost!!"). Sectors beyond the end of the image are not erased by the installer, but with the header at `0x100000` gone they are no longer reachable by the stock OS.
-
-Measured on the emulated unit with real XL firmware (the procedure applies to any XL OS):
-
-| Image | Size | Flash it occupies | Beyond the OS area | Internal-memory sectors overwritten |
-|---|---|---|---|---|
-| Akai OS 1.24 (stock) | 784,916 B | `0x010000` - `0x0BFA13` | none | none |
-| A third-party OS that fits the OS area | 894,040 B | `0x010000` - `0x0DA457` | none (fits) | none |
-| XL OS, smallest | 1,175,052 B | `0x010000` - `0x11EE0B` | 192,028 B | sectors 16-17 (`0x100000` - `0x11FFFF`, 128 KiB) |
-| XL OS, medium | 1,331,048 B | `0x010000` - `0x144F67` | 348,024 B | sectors 16-20 (`0x100000` - `0x14FFFF`, 320 KiB) |
-| XL OS, largest | 1,503,360 B | `0x010000` - `0x16F07F` | 520,336 B | sectors 16-22 (`0x100000` - `0x16FFFF`, 448 KiB) |
-
-For the largest XL OS above the installer was traced in detail: it erased 23 consecutive sectors, `0x010000` - `0x17FFFF` (the OS area, the settings sector and 8 internal-memory sectors), and programmed `0x010000` - `0x16F07F` plus its settings. The table lists the sectors that receive image data; an installer may erase more than it writes.
-
-**Going back to the stock OS.** Once the start of the internal memory has been overwritten, the stock OS no longer finds valid internal-memory headers. The recovery reported for the real unit is: run a "clear internal" OS once (it erases the two header sectors), install the normal Akai OS, then restore your internal data by loading your INTERNAL folder from the card and saving it to INTERNAL MEMORY. No such tool is included here.
-
-**The procedure, for any such firmware.** (1) Put an OS with its own installer on the unit (it must fit the OS area, so that the stock updater accepts it). (2) Put the XL image on the card. (3) Install it from that OS's Load page. (4) Power cycle. In the emulator's virtual unit this runs the real installer code: the installer in the test firmware lists an XL file only when it is named with a `.OSX` extension on the card (a file named `.OS3` is not listed), and you press `F6` (DO IT) on the Load page, then `F5` (DO IT) in the update dialog. This sequence is covered by the automated test `tests/install_chain.py` and compared byte for byte with the firmware files.
-
-*How the real unit behaves after such an install, beyond what the firmware itself shows, has not been verified on hardware.*
-
-In the chooser: select an OS that fits and has its own installer, and click **Flash OS**; put the XL image in the **card-files** folder (name it with a `.OSX` extension), click **Build card**, **Power on**, then follow the procedure above. Selecting the XL image in **Flash OS** is refused with an explanation.
-
-**Developer direct load** (button or `D`) skips all of this and loads any image straight into a temporary flash: handy for quick checks, but it is not how the hardware behaves and nothing is kept.
-
-> Installing an XL OS overwrites the start of the virtual unit's internal memory, just as on a real unit (see the table above). To keep a copy, copy `unit.flash` first.
-
+**Afterwards:** the chooser appears at every start; press **Enter** (**Power on**) to start the unit as you left it, with its installed OS, settings and internal memory. `Ctrl+O` returns to the chooser from the running emulator, `Esc` quits. The panel controls are described in [section 5](#5-first-run); the other sections of this guide are for people building from source or testing firmware from the command line.
 
 ## Memory and card size
 
@@ -105,13 +59,14 @@ The first time the packaged app starts it creates a folder called **MPC2500 Emul
 1. [What you need](#1-what-you-need)
 2. [Installation](#2-installation)
 3. [Getting firmware files](#3-getting-firmware-files)
-4. [First run](#4-first-run)
-5. [CompactFlash cards, kits and AUTOLOAD](#5-compactflash-cards-kits-and-autoload)
-6. [Testing your own firmware](#6-testing-your-own-firmware)
-7. [Recipes for each firmware type](#7-recipes-for-each-firmware-type)
-8. [Everyday tasks](#8-everyday-tasks)
-9. [Troubleshooting](#9-troubleshooting)
-10. [Updating and removing](#10-updating-and-removing)
+4. [Installing an Extra Large (XL) OS](#4-installing-an-extra-large-xl-os)
+5. [First run](#5-first-run)
+6. [CompactFlash cards, kits and AUTOLOAD](#6-compactflash-cards-kits-and-autoload)
+7. [Testing your own firmware](#7-testing-your-own-firmware)
+8. [Recipes for each firmware type](#8-recipes-for-each-firmware-type)
+9. [Everyday tasks](#9-everyday-tasks)
+10. [Troubleshooting](#10-troubleshooting)
+11. [Updating and removing](#11-updating-and-removing)
 
 ---
 
@@ -195,12 +150,12 @@ python3 tests/dsp_diff.py --cases 100000 # expect "... mismatching (header,alu) 
 
 ## 3. Getting firmware files
 
-The emulator accepts the same files you would put on a real MPC2500. Put them in the `firmware/` folder (nothing is shipped; supply your own):
+The emulator accepts the same firmware files you would put on a real MPC2500. The stock Akai OS (from Akai's OS update package) is the reference firmware; any other firmware you build or obtain is simply another OS image to test. Put the files in the `firmware/` folder (nothing is shipped; supply your own):
 
 | File | What it is | Where it comes from |
 |---|---|---|
-| `*.bin` (about 0.8–0.9 MB) | **Full OS build** — boot block + OS, as in the OS update package | Akai's OS update, or a third-party OS release |
-| `*.osx`, `*.os3` (1.2–1.5 MB) | **Run-in-place test images** whose header reads `MPC2500 TEST ...` | XL OS releases (larger than the stock OS area) |
+| `*.bin` (about 0.8–0.9 MB) | **Full OS build**: boot block + OS | Akai's OS update package, or your own build |
+| `*.osx`, `*.os3` (1.2–1.5 MB) | **XL OS images** (larger than the stock OS area); their header reads `MPC2500 TEST ...` | Your own or other XL builds; see [section 4](#4-installing-an-extra-large-xl-os) |
 | `*.sos` | **OS only** (no boot block) | OS update packages; needs a full build next to it as a donor |
 | 8 MiB file | A **whole-flash dump** | A flash backup |
 
@@ -214,7 +169,67 @@ firmware folder: firmware
 ```
 (`--firmware-dir DIR` lists another folder.)
 
-## 4. First run
+## 4. Installing an Extra Large (XL) OS
+
+In this guide an OS image that is **larger than the stock OS area** is called an **Extra Large (XL)** OS, or XL firmware for short.
+
+> [!CAUTION]
+> **DANGER: installing an XL OS overwrites part of the internal memory, and it can leave a real unit unusable.**
+>
+> An XL OS is written over the settings sector and then over the start of the internal memory (see the flash map below). Everything stored in the overwritten area is destroyed. On real hardware this corruption of the internal memory **can happen, and has happened with certain third-party XL firmware in the past**. A corrupted internal memory can make the unit **get stuck in a permanent boot loop**. Installing XL firmware on a real unit is entirely at your own risk, and a unit that no longer starts may not be recoverable.
+>
+> **Trying to recover (there is NO guarantee that this will work, and this project has not verified it on hardware):**
+>
+> 1. Prepare a CompactFlash card with the original Akai OS update file (`MPC2500.SOS` for the boot-block updater) and, if you have it, the card's `INTERNAL` folder with the factory data and an `AUTOLOAD` folder with a memory save you trust (the manual: a folder named AUTOLOAD in the card's root is loaded automatically when the unit starts with the card inserted).
+>
+> 2. Power the unit on with the card inserted so that the boot block's OS UPDATE screen installs the original Akai OS. The boot block does this by itself when it finds no valid OS. If an OS is present but keeps restarting, the boot code of the emulated unit opens the OS UPDATE screen when one of the keys OVER DUB, STEP >, WINDOW, TAP TEMPO, 0, 2 or 5 is held while powering on; that combination has not been verified on a real unit.
+>
+> 3. Once the original OS runs, let the AUTOLOAD folder load, then save to INTERNAL MEMORY (SAVE ALL PROGRAMS & SAMPLES and SAVE ALL SEQS & SONGS). The manual says this erases the internal flash and replaces its data, which is how the factory data is restored. This may rebuild a valid internal memory.
+>
+> 4. If the original OS still restarts because of the damaged internal memory, a firmware that clears the internal-memory headers is reported to be needed first (run it once, then install the original Akai OS and repeat step 3). No such firmware is included here. If the unit cannot start the OS UPDATE screen at all, it needs a technician.
+
+The unit's 8 MiB flash chip is shared by the boot block, the OS, the settings and the **internal memory**. This is the map the emulator uses (it comes from tracing the real Akai OS and boot block):
+
+| Flash address | Size | What lives there |
+|---|---|---|
+| `0x000000` - `0x00FFFF` | 64 KiB | Boot block. Never rewritten by any updater |
+| `0x010000` - `0x0EFFFF` | 14 sectors of 64 KiB (917,504 bytes) | **The OS area.** The last 16 bytes hold the OS checksum (at `0x0EFFF0`), so an OS can be at most **917,488 bytes** |
+| `0x0F0000` - `0x0FFFFF` | 1 sector | The OS's settings |
+| `0x100000` and up | to the end of the chip (`0x7FFFFF`) | **Internal memory** (sequences, songs, programs, samples). The stock OS keeps the header of its sequences-and-songs area at `0x100000` (sector 16) and the header of its programs-and-samples area at `0x2A0000` (sector 42) |
+
+**The boot block and the stock Akai OS updater only erase and write the OS area** (`0x010000` - `0x0EFFFF`). They refuse any OS image that does not fit in it (the stock OS answers "File too big: Can't execute!!"). This is how the real unit behaves, and the emulator shows it because the real firmware code is running.
+
+An XL OS **larger than the OS area** can still be installed, but only by an OS that contains its **own installer** and writes beyond the stock limit. It cannot be done by the stock updater. When such an installer runs, the image is laid out contiguously in flash starting at `0x010000`, and **whatever does not fit in the OS area overwrites the flash that follows it**:
+
+1. The first 917,488 bytes of the image fill the OS area.
+2. Next it **erases and overwrites the settings sector** (`0x0F0000`). The new OS then writes its own settings there.
+3. The rest of the image **erases and overwrites the internal memory, starting at its very first sector (`0x100000`) and continuing upwards, one 64 KiB sector at a time**, for as many sectors as the image needs. That includes the stock OS's sequences-and-songs header.
+
+So an XL OS takes its extra space **out of the internal memory**. Everything stored in the overwritten sectors is destroyed, the start of the internal memory is no longer a valid stock layout, and the unit's own warning says so ("All memory contents will be lost!!"). Sectors beyond the end of the image are not erased by the installer, but with the header at `0x100000` gone they are no longer reachable by the stock OS.
+
+Measured on the emulated unit with real XL firmware (the procedure applies to any XL OS):
+
+| Image | Size | Flash it occupies | Beyond the OS area | Internal-memory sectors overwritten |
+|---|---|---|---|---|
+| Akai OS 1.24 (stock) | 784,916 B | `0x010000` - `0x0BFA13` | none | none |
+| A third-party OS that fits the OS area | 894,040 B | `0x010000` - `0x0DA457` | none (fits) | none |
+| XL OS, smallest | 1,175,052 B | `0x010000` - `0x11EE0B` | 192,028 B | sectors 16-17 (`0x100000` - `0x11FFFF`, 128 KiB) |
+| XL OS, medium | 1,331,048 B | `0x010000` - `0x144F67` | 348,024 B | sectors 16-20 (`0x100000` - `0x14FFFF`, 320 KiB) |
+| XL OS, largest | 1,503,360 B | `0x010000` - `0x16F07F` | 520,336 B | sectors 16-22 (`0x100000` - `0x16FFFF`, 448 KiB) |
+
+For the largest XL OS above the installer was traced in detail: it erased 23 consecutive sectors, `0x010000` - `0x17FFFF` (the OS area, the settings sector and 8 internal-memory sectors), and programmed `0x010000` - `0x16F07F` plus its settings. The table lists the sectors that receive image data; an installer may erase more than it writes.
+
+**The procedure, for any such firmware.** (1) Put an OS with its own installer on the unit (it must fit the OS area, so that the stock updater accepts it). (2) Put the XL image on the card. (3) Install it from that OS's Load page. (4) Power cycle. In the emulator's virtual unit this runs the real installer code: the installer in the test firmware lists an XL file only when it is named with a `.OSX` extension on the card (a file named `.OS3` is not listed), and you press `F6` (DO IT) on the Load page, then `F5` (DO IT) in the update dialog. This sequence is covered by the automated test `tests/install_chain.py` and compared byte for byte with the firmware files.
+
+*How the real unit behaves after such an install, beyond what the firmware itself shows, has not been verified on hardware.*
+
+In the chooser: select an OS that fits and has its own installer, and click **Flash OS**; put the XL image in the **card-files** folder (name it with a `.OSX` extension), click **Build card**, **Power on**, then follow the procedure above. Selecting the XL image in **Flash OS** is refused with an explanation.
+
+**Developer direct load** (button or `D`) skips all of this and loads any image straight into a temporary flash: handy for quick checks, but it is not how the hardware behaves and nothing is kept.
+
+> Installing an XL OS overwrites the start of the virtual unit's internal memory, just as on a real unit (see the table above). To keep a copy, copy `unit.flash` first.
+
+## 5. First run
 
 1. Put one firmware file in `firmware/` (or pass `--firmware path/to/file`).
 2. Start the emulator:
@@ -242,15 +257,15 @@ With stock Akai OS 1.24 and no card you land on the main page:
 
 ![Stock main page](docs/images/lcd_main_empty.png)
 
-Open the Load page with `MODE` (`D`) + `PAD 2` to see a card (once you have one, section 5):
+Open the Load page with `MODE` (`D`) + `PAD 2` to see a card (once you have one, section 6):
 
 ![Load page](docs/images/lcd_load.png)
 
-## 5. CompactFlash cards, kits and AUTOLOAD
+## 6. CompactFlash cards, kits and AUTOLOAD
 
 The firmware reads and writes a CompactFlash card in the slot. The emulator presents a FAT16 disk image as that card.
 
-### 5.1 Create a card image from files
+### 6.1 Create a card image from files
 
 ```bash
 python3 tools/mkfat16.py card/card.img 128 KIT.PGM SAMPLE1.SND SAMPLE2.SND
@@ -261,10 +276,10 @@ This builds a 128 MB image (MBR + FAT16) holding those files in the root folder 
 emu/mpc2500emu --save-card card/after.img
 ```
 
-### 5.2 Load a kit by hand
+### 6.2 Load a kit by hand
 `MODE` + `PAD 2` opens the Load page, pick the program or ALL file with the cursor keys and DATA wheel, and press `F6` (DO IT).
 
-### 5.3 Load a kit automatically (AUTOLOAD)
+### 6.3 Load a kit automatically (AUTOLOAD)
 The stock OS loads the contents of a folder named `AUTOLOAD` in the card's root when it starts with the card inserted. You can create it exactly as on the unit: load your kit, then in the Save page (`MODE` + `PAD 3`) choose **SAVE ENTIRE MEMORY**, press `F6`, then `F2` (A.LOAD) and `F5` (DO IT). Or let a script do it:
 
 ```bash
@@ -278,7 +293,7 @@ and ends with the kit selected:
 
 ![After AUTOLOAD](docs/images/lcd_autoload_done.png)
 
-### 5.4 Internal memory
+### 6.4 Internal memory
 "INTERNAL MEMORY" in the Load and Save pages is the unit's internal flash, not a folder on the card. It lives inside the emulated flash chip and starts empty at every launch. Keep it with `--save-flash FILE` and start from it again with `--flash-state FILE`:
 
 ```bash
@@ -286,14 +301,14 @@ emu/mpc2500emu --save-flash state.flash          # writes the flash when you qui
 emu/mpc2500emu --flash-state state.flash         # starts from that flash instead of the firmware file
 ```
 
-## 6. Testing your own firmware
+## 7. Testing your own firmware
 
 Three levels, from quick to thorough. All of them use exactly the same firmware file you would flash.
 
-### 6.1 Interactive
+### 7.1 Interactive
 Put the file in `firmware/` (or `--firmware`), run `./run_live.sh`, and use the panel. A crash is reported on the terminal and the window gets a red border; `Ctrl+R` restarts it.
 
-### 6.2 Headless smoke test
+### 7.2 Headless smoke test
 Boot without a window for a number of emulated instructions (66,150,000 = one second of unit time) and print the machine state:
 
 ```bash
@@ -338,7 +353,7 @@ stack @R15: 00000000 00000000 ...
 
 `pc` is where it stopped, `PR` the return address of the last call, and the last-PCs list shows the path that led there.
 
-### 6.3 Scripted, repeatable tests
+### 7.3 Scripted, repeatable tests
 The `--exp` mode boots once, then runs one or more **scripts** from that booted state (each in its own process, so they do not disturb each other) and writes LCD frames and audio files:
 
 ```bash
@@ -374,9 +389,9 @@ python3 tests/golden.py --bin emu/mpc2500emu_hl --raw --update      # record new
 ```
 When you change your firmware, a failing scenario tells you which screen or sound changed.
 
-## 7. Recipes for each firmware type
+## 8. Recipes for each firmware type
 
-### 7.1 Stock Akai OS (full `.bin` build)
+### 8.1 Stock Akai OS (full `.bin` build)
 ```bash
 cp MPC2500.BIN firmware/
 ./run_live.sh
@@ -393,15 +408,15 @@ For CUTOFF and RESO the pad's filter must be switched on in `PROGRAM` → `F2` (
 
 ![Program filter](docs/images/lcd_program_filter.png)
 
-### 7.2 Third-party OS builds that fit the stock OS area (`.bin`)
+### 8.2 Third-party OS builds that fit the stock OS area (`.bin`)
 Same as stock: in the chooser select the file and click **Flash OS**. From source, for a quick developer check:
 ```bash
 ./run_live.sh --firmware firmware/custom_os.bin
 ```
 ![A third-party OS that fits the stock OS area](docs/images/lcd_custom_os_fits.png)
 
-### 7.3 XL firmware (`.osx`, `.os3`)
-An XL OS image (larger than the stock OS area) is not accepted by the boot block or the stock updater. In the packaged app it is installed through an OS that has its own installer (see *Installing an Extra Large (XL) OS*). From source, for a quick developer check, the image can be launched directly, skipping the installer:
+### 8.3 XL firmware (`.osx`, `.os3`)
+An XL OS image (larger than the stock OS area) is not accepted by the boot block or the stock updater. In the packaged app it is installed through an OS that has its own installer (see [section 4](#4-installing-an-extra-large-xl-os)). From source, for a quick developer check, the image can be launched directly, skipping the installer:
 ```bash
 ./run_live.sh --firmware firmware/xl_os.osx
 ```
@@ -409,7 +424,7 @@ An XL OS image (larger than the stock OS area) is not accepted by the boot block
 
 The loader prints a warning such as *"this image overwrites flash sector 15 (settings) and the internal-data sectors"*. That only affects the **emulator's in-memory flash**; every new launch starts clean. It also reminds you that the stock updater cannot install such an image on a real unit.
 
-### 7.4 OS-only `.SOS` files
+### 8.4 OS-only `.SOS` files
 These contain only the operating system. Give the emulator a full build with a valid boot block to take it from:
 
 ```bash
@@ -417,14 +432,14 @@ emu/mpc2500emu --donor firmware/mpc2500.bin firmware/MPC2500.SOS
 ```
 (If a full build is in the same folder as the `.SOS` it is found automatically.)
 
-### 7.5 Whole-flash dumps
+### 8.5 Whole-flash dumps
 An 8 MiB file is treated as the entire flash chip, boot block, OS and internal memory included:
 ```bash
 emu/mpc2500emu --firmware dumps/backup.bin
 ```
 Use `--save-flash` to produce your own dump of the emulated state.
 
-### 7.6 Comparing two firmware versions
+### 8.6 Comparing two firmware versions
 Run both through the same script and compare the outputs:
 ```bash
 for f in old.bin new.bin; do
@@ -433,7 +448,7 @@ done
 cmp out_old.bin/main_a.bin out_new.bin/main_a.bin && echo "main page identical"
 ```
 
-## 8. Everyday tasks
+## 9. Everyday tasks
 
 | I want to… | Do this |
 |---|---|
@@ -446,7 +461,7 @@ cmp out_old.bin/main_a.bin out_new.bin/main_a.bin && echo "main page identical"
 | See every option | `emu/mpc2500emu --help` |
 | Capture a screenshot of the LCD | Script `dump a`, then `tools/lcd2png.py` |
 
-## 9. Troubleshooting
+## 10. Troubleshooting
 
 | Symptom | Cause / fix |
 |---|---|
@@ -461,7 +476,7 @@ cmp out_old.bin/main_a.bin out_new.bin/main_a.bin && echo "main page identical"
 | `warning: cannot read card image` | The card image path is wrong; the emulator then runs without a card |
 | Keys do nothing | The window must have keyboard focus; key names in `panel_map.txt` follow SDL names (`Left Shift`, `PageUp`, ...) |
 
-## 10. Updating and removing
+## 11. Updating and removing
 
 Update:
 ```bash

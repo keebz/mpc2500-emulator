@@ -148,6 +148,21 @@ The real rules are enforced by the firmware itself, which runs unmodified. The c
 
 In this document an OS image that is **larger than the stock OS area** is called an **Extra Large (XL)** OS, or XL firmware for short.
 
+> [!CAUTION]
+> **DANGER: installing an XL OS overwrites part of the internal memory, and it can leave a real unit unusable.**
+>
+> An XL OS is written over the settings sector and then over the start of the internal memory (see the flash map below). Everything stored in the overwritten area is destroyed. On real hardware this corruption of the internal memory **can happen, and has happened with certain third-party XL firmware in the past**. A corrupted internal memory can make the unit **get stuck in a permanent boot loop**. Installing XL firmware on a real unit is entirely at your own risk, and a unit that no longer starts may not be recoverable.
+>
+> **Trying to recover (there is NO guarantee that this will work, and this project has not verified it on hardware):**
+>
+> 1. Prepare a CompactFlash card with the original Akai OS update file (`MPC2500.SOS` for the boot-block updater) and, if you have it, the card's `INTERNAL` folder with the factory data and an `AUTOLOAD` folder with a memory save you trust (the manual: a folder named AUTOLOAD in the card's root is loaded automatically when the unit starts with the card inserted).
+>
+> 2. Power the unit on with the card inserted so that the boot block's OS UPDATE screen installs the original Akai OS. The boot block does this by itself when it finds no valid OS. If an OS is present but keeps restarting, the boot code of the emulated unit opens the OS UPDATE screen when one of the keys OVER DUB, STEP >, WINDOW, TAP TEMPO, 0, 2 or 5 is held while powering on; that combination has not been verified on a real unit.
+>
+> 3. Once the original OS runs, let the AUTOLOAD folder load, then save to INTERNAL MEMORY (SAVE ALL PROGRAMS & SAMPLES and SAVE ALL SEQS & SONGS). The manual says this erases the internal flash and replaces its data, which is how the factory data is restored. This may rebuild a valid internal memory.
+>
+> 4. If the original OS still restarts because of the damaged internal memory, a firmware that clears the internal-memory headers is reported to be needed first (run it once, then install the original Akai OS and repeat step 3). No such firmware is included here. If the unit cannot start the OS UPDATE screen at all, it needs a technician.
+
 The unit's 8 MiB flash chip is shared by the boot block, the OS, the settings and the **internal memory**. This is the map the emulator uses (it comes from tracing the real Akai OS and boot block):
 
 | Flash address | Size | What lives there |

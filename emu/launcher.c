@@ -73,7 +73,7 @@ static int pwrapped(SDL_Renderer *r, int x, int y, int scale, SDL_Color c, const
 void ui_draw_text(SDL_Renderer *r, int x, int y, int scale, SDL_Color c, const char *s) { if (!pf[0].tex) make_pfonts(r); ptext(r, x, y, scale, c, s, 0); }
 int ui_text_width(int scale, const char *s) { return pw(scale, s); }
 static const char *kind_label(const FwEntry *e) {
-    if (!strcmp(e->kind, "build")) return "OS build"; if (!strcmp(e->kind, "test")) return "run-in-place image";
+    if (!strcmp(e->kind, "build")) return "OS build"; if (!strcmp(e->kind, "test")) return "XL OS image";
     if (!strcmp(e->kind, "sos")) return "OS-only (.SOS)"; if (!strcmp(e->kind, "dump")) return "whole-flash dump"; return "not recognised";
 }
 static int has_ext(const char *f, const char *ext) { size_t a = strlen(f), b = strlen(ext); return a >= b && !strcasecmp(f + a - b, ext); }
@@ -319,7 +319,7 @@ int ui_launcher(const char *fwdir, char *out_fw, size_t outn, const char *messag
         ptext(ren, 24, 8, 2, lime, "MPC2500 Emulator", 0); ptext(ren, 24 + pw(2, "MPC2500 Emulator") + 12, 22, 1, dim, APP_VERSION, 0);
         if (unit_mode) {
             char ul[200]; snprintf(ul, sizeof ul, "Virtual unit: %s", unit_exists ? unitinfo : "none yet (no OS installed)"); ptext(ren, 24, 46, 3, lime, ul, 88);
-            ptext(ren, 24, 68, 1, dim, "Flash OS installs an OS build that fits the stock OS area (larger OSes: see the Quick Start).", 112);
+            ptext(ren, 24, 68, 1, dim, "Flash OS installs an OS build that fits the stock OS area (for an XL OS see the Quick Start).", 112);
         } else pwrapped(ren, 24, 56, 1, dim, "Choose a firmware to run. Drop a firmware file onto this window to add it. No firmware is supplied with the emulator: use your own files.", 112);
         char line[PATH_MAX + 64]; { char tb[PATH_MAX + 8]; const char *fd = tilde(fwdir, tb, sizeof tb); size_t fl = strlen(fd); const char *tail = fl > 90 ? fd + fl - 88 : fd; snprintf(line, sizeof line, "Firmware folder: %s%s", fl > 90 ? "..." : "", tail); }
         ptext(ren, 24, 94, 1, dim, line, 112);

@@ -135,14 +135,24 @@ class Doc:
             self.y -= h; i += len(chunk)
         self.y -= 7
 
-    def quote(self, text):
-        avail = PAGE_W - 2 * MARGIN - 22; lines = self.wrap(text, avail, 9.4); lead = 9.4 * 1.38; i = 0
+    def quote(self, text, danger=False):
+        """Block quote. danger=True (a '> [!CAUTION]' quote) draws a red warning box; text may be a list of paragraphs."""
+        avail = PAGE_W - 2 * MARGIN - 22; size = 9.4 if not danger else 9.6
+        paras = text if isinstance(text, list) else [text]; lines = []
+        for k, ptxt in enumerate(paras):
+            if k: lines.append(None)
+            lines += self.wrap(ptxt, avail, size)
+        lead = size * 1.38; i = 0
+        fill, bar, col = ((1.0, 0.9, 0.9), (0.8, 0.05, 0.05), (0.55, 0.0, 0.0)) if danger else ((0.985, 0.965, 0.9), (0.85, 0.6, 0.2), (0, 0, 0))
+        if danger and len(lines) * lead + 8 < PAGE_H - 2 * MARGIN - 40: self.ensure(len(lines) * lead + 14)       # a warning box is kept on one page
         while i < len(lines):
             self.ensure(lead * 2)
             room = max(int((self.y - MARGIN - 18) / lead), 1); chunk = lines[i:i + room]; h = len(chunk) * lead + 8
-            self.rect(MARGIN, self.y - h, PAGE_W - 2 * MARGIN, h, fill=(0.985, 0.965, 0.9)); self.rect(MARGIN, self.y - h, 3, h, fill=(0.85, 0.6, 0.2))
-            yy = self.y - 6 - 9.4 + 2
-            for ln in chunk: self.draw_line(MARGIN + 12, yy, ln, 9.4); yy -= lead
+            self.rect(MARGIN, self.y - h, PAGE_W - 2 * MARGIN, h, fill=fill, stroke=bar if danger else None, lw=0.8); self.rect(MARGIN, self.y - h, 4 if danger else 3, h, fill=bar)
+            yy = self.y - 6 - size + 2
+            for ln in chunk:
+                if ln is not None: self.draw_line(MARGIN + 12, yy, ln, size, col)
+                yy -= lead
             self.y -= h; i += len(chunk)
         self.y -= 7
 
@@ -245,7 +255,14 @@ def convert(md_path, pdf_path, title):
             continue
         if l.startswith(">"):
             buf = []
-            while i < len(lines) and lines[i].startswith(">"): buf.append(lines[i].lstrip("> ").strip()); i += 1
+            while i < len(lines) and lines[i].startswith(">"): buf.append(lines[i][1:].strip()); i += 1
+            if buf and buf[0].startswith("[!CAUTION]"):                      # GitHub alert syntax: drawn as a red warning box
+                paras, cur = [], []
+                for t in buf[1:]:
+                    if t: cur.append(t)
+                    elif cur: paras.append(" ".join(cur)); cur = []
+                if cur: paras.append(" ".join(cur))
+                doc.quote(paras, danger=True); continue
             doc.quote(" ".join(buf)); continue
         m = re.match(r"^(\s*)([-*]|\d+\.)\s+(.*)", l)
         if m:
