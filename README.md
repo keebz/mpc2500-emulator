@@ -9,7 +9,11 @@ It runs the stock Akai OS and third-party operating systems (JJOS family) unmodi
 </p>
 
 > **Disclaimer — please read.** This software is provided **"as is", without warranty of any kind**, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose and non-infringement. The authors accept **no liability** for any claim, damages or other liability arising from the use of, or inability to use, this software. It is an independent, unofficial project: it is **not affiliated with, endorsed by or supported by Akai Professional, inMusic, Renesas, JJOS authors or any other firmware author**. "Akai", "Akai Professional", "MPC" and "MPC2500" are trademarks of their respective owners and are used here only to identify the hardware being emulated; the application carries no manufacturer logos. **No Akai or third-party firmware, manuals or other copyrighted material is included**; you must supply your own firmware files and are responsible for having the right to use them.
-> **An emulator is not a hardware test.** Behaviour on the emulator can differ from behaviour on a real MPC2500. Never treat "it ran in the emulator" as proof that a firmware is safe to flash to a real unit; flashing firmware can render hardware unusable, and you do so entirely at your own risk.
+>
+> **EXPERIMENTAL SOFTWARE — NOT A HARDWARE TEST.** This is an experimental emulator. It is intended only for people who understand firmware development and the risks involved; **if you do not know exactly what you are doing, do not use it, and do not flash anything to a real unit.**
+> - If you create or modify a firmware and test it in this emulator, that gives **no promise, guarantee or expectation of any kind** that it will work, or even be safe, on real hardware. Emulated behaviour can differ from real hardware in ways that are known and in ways that are not.
+> - **Installing firmware on your own hardware can damage it beyond repair** (for example by leaving it unable to boot or recover). You do so entirely at your own risk.
+> - The authors give **no guarantee of the validity, accuracy or completeness of anything the emulator outputs** (audio, display, timing, files, logs or fault reports) and accept **no liability whatsoever** for any loss or damage — to hardware, data or anything else — arising from the use of this software or from decisions made on the basis of its output.
 
 ---
 
