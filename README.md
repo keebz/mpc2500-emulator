@@ -167,6 +167,8 @@ cp /path/to/your/firmware.bin firmware/
 | `Tab` (hold) | Fast-forward (8x) |
 | `Ctrl+R` | Power cycle (flash and card contents survive, RAM is cleared) |
 | `Ctrl+O` | Return to the firmware chooser (packaged app) |
+| `Ctrl+/` (macOS: `Cmd+/`) | Cheat sheet: an overlay listing every key binding (also the **Cheat Sheet** button on the top bezel) |
+| **Firmware / Card** button | Top bezel, same as `Ctrl+O`: change firmware, build or eject the card |
 | `Esc` | Quit |
 
 Combinations work as on the hardware by holding one key on the keyboard and using the mouse for the other, for example `MODE` (`D`) held while clicking `PAD 1`.
