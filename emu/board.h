@@ -189,6 +189,7 @@ int  app_build_card(const char *srcdir, const char *outimg, char *msg, size_t ms
 const uint8_t *lcd_glyph(int c);        // 8x8 glyph of an ASCII character (the LCD's stand-in character generator)
 extern int card_dirty;                  // the firmware wrote to the card since it was attached
 extern const char *g_fw_dir, *g_card_dir;   // firmware / card folders in use (set by the command line)
+int  ui_disclaimer(void);   // start-up warning that must be accepted every launch (SDL builds); 1 = accepted, 0 = declined: the caller must quit
 int  ui_launcher(const char *fwdir, char *out_fw, size_t n, const char *message);   // window to choose a firmware (SDL builds); 1 = chosen, 0 = quit
 typedef struct { char path[512]; char name[128]; char kind[24]; int ok; char note[200]; long size; } FwEntry;
 int  fw_scan_folder(const char *dir, FwEntry *out, int max);      // classify every candidate firmware file in a folder

@@ -65,7 +65,7 @@ def panel():
     """Full front-panel screenshot from the live window (dummy video driver), stock OS with the AUTOLOAD kit loaded (Tab held = fast-forward)."""
     shot = os.path.join(ROOT, "live_shot.bmp")
     if os.path.exists(shot): os.remove(shot)
-    env = dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_AUDIODRIVER="dummy", LIVE_EVENTS="5:d:Tab;1900:u:Tab", LIVE_FRAMES="2100")
+    env = dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_AUDIODRIVER="dummy", LIVE_EVENTS="5:d:Tab;1900:u:Tab", LIVE_FRAMES="2100", DISCLAIMER_TEST="accept")  # test hook: skip the start-up notice
     subprocess.run([WIN, STOCK], cwd=ROOT, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=600)
     im = Image.open(shot).convert("RGB"); im.save(os.path.join(OUT, "panel.png")); os.remove(shot); print("wrote panel.png")
     return im

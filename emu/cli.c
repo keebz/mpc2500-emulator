@@ -82,6 +82,9 @@ int main(int argc, char **argv) {
 #else
     const int window_mode = 0;
 #endif
+#ifdef USE_SDL
+    if (window_mode && !ui_disclaimer()) { fprintf(stderr, "Notice declined: exiting.\n"); return 0; }     // every launch, no exceptions
+#endif
     if (appm) {                          // packaged build: resources inside the bundle, the user's files in their MPC2500 Emulator folder
         const char *rd = app_res_dir(), *ud = app_user_dir();
         if (!strcmp(skin, "skin")) { snprintf(skin_buf, sizeof skin_buf, "%s/skin", rd); skin = skin_buf; }

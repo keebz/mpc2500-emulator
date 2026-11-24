@@ -57,6 +57,84 @@ static const char *tilde(const char *path, char *buf, size_t n) {
 }
 static const char *base_of(const char *p) { const char *s = strrchr(p, '/'); return s ? s + 1 : p; }
 
+// Start-up warning. Shown every time the window version starts; the user must scroll to the end and accept, otherwise (decline, Esc, closing the window)
+// the application exits. Returns 1 = accepted, 0 = declined.
+static const char *const disc_lines[] = {
+#include "disclaimer_text.inc"
+};
+int ui_disclaimer(void) {
+    const char *auto_t = getenv("DISCLAIMER_TEST");              // test hook only: "accept" / "decline" answer without showing the window
+    if (auto_t && !strcmp(auto_t, "accept")) return 1;
+    if (auto_t && !strcmp(auto_t, "decline")) return 0;
+    if (SDL_WasInit(SDL_INIT_VIDEO) == 0 && SDL_Init(SDL_INIT_VIDEO) != 0) { fprintf(stderr, "SDL: %s\n", SDL_GetError()); return 0; }
+    SDL_Window *win = SDL_CreateWindow("MPC2500 Emulator - Important notice", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WIN_W, WIN_H, SDL_WINDOW_RESIZABLE);
+    SDL_Renderer *ren = win ? SDL_CreateRenderer(win, -1, SDL_RENDERER_PRESENTVSYNC) : 0;
+    if (!ren) { fprintf(stderr, "SDL window/renderer: %s\n", SDL_GetError()); return 0; }
+    SDL_RenderSetLogicalSize(ren, WIN_W, WIN_H); make_font(ren);
+    const int top = 64, bot = WIN_H - 92, view = bot - top;
+    int scroll = 0, total = view, result = -1, nag = 0; const char *inject = (auto_t && !strcmp(auto_t, "inject")) ? getenv("DISCLAIMER_INJECT") : 0; int frame = 0;
+    Btn bdecl = { 24, WIN_H - 56, 300, 40, "Decline and quit (D / Esc)", 1 }, bacc = { WIN_W - 24 - 300, WIN_H - 56, 300, 40, "I accept (A)", 2 };
+    SDL_Color white = { 235, 235, 240, 255 }, dim = { 150, 155, 165, 255 }, red = { 255, 110, 90, 255 }, warn = { 255, 200, 90, 255 };
+    while (result < 0) {
+        int maxs = total > view ? total - view : 0, at_end = scroll >= maxs - 2, act = 0;      // act: 1 decline, 2 accept
+        if (inject && inject[frame / 3] && frame % 3 == 2) {                                     // test hook: p = page down, a = accept key, d = decline key, x = close window
+            char c = inject[frame / 3]; SDL_Event ev; SDL_zero(ev);
+            if (c == 'x') ev.type = SDL_QUIT; else { ev.type = SDL_KEYDOWN; ev.key.keysym.sym = c == 'p' ? SDLK_PAGEDOWN : c == 'a' ? SDLK_a : SDLK_d; }
+            SDL_PushEvent(&ev);
+        }
+        frame++;
+        SDL_Event e;
+        while (SDL_PollEvent(&e)) {
+            if (e.type == SDL_QUIT) act = 1;
+            else if (e.type == SDL_KEYDOWN) {
+                SDL_Keycode k = e.key.keysym.sym;
+                if (k == SDLK_ESCAPE || k == SDLK_d) act = 1;
+                else if (k == SDLK_a) act = 2;
+                else if (k == SDLK_DOWN) scroll += 36; else if (k == SDLK_UP) scroll -= 36;
+                else if (k == SDLK_PAGEDOWN || k == SDLK_SPACE) scroll += view - 36; else if (k == SDLK_PAGEUP) scroll -= view - 36;
+                else if (k == SDLK_END) scroll = maxs; else if (k == SDLK_HOME) scroll = 0;
+            } else if (e.type == SDL_MOUSEWHEEL) scroll -= e.wheel.y * 54;
+            else if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
+                int mx = e.button.x, my = e.button.y;
+                if (mx >= bdecl.x && mx < bdecl.x + bdecl.w && my >= bdecl.y && my < bdecl.y + bdecl.h) act = 1;
+                if (mx >= bacc.x && mx < bacc.x + bacc.w && my >= bacc.y && my < bacc.y + bacc.h) act = 2;
+            }
+        }
+        if (scroll < 0) scroll = 0; if (scroll > maxs) scroll = maxs;
+        if (act == 1) result = 0;
+        else if (act == 2) { if (scroll >= maxs - 2) result = 1; else nag = 120; }              // cannot accept before the whole notice has been shown
+        at_end = scroll >= maxs - 2;
+        if (nag > 0) nag--;
+        SDL_SetRenderDrawColor(ren, 22, 24, 28, 255); SDL_RenderClear(ren);
+        text(ren, 24, 14, 2, red, "WARNING - EXPERIMENTAL SOFTWARE", 0);
+        SDL_SetRenderDrawColor(ren, 40, 43, 50, 255); SDL_Rect box = { 24, top - 4, WIN_W - 48, view + 8 }; SDL_RenderFillRect(ren, &box);
+        SDL_Rect clip = { 24, top, WIN_W - 48, view }; SDL_RenderSetClipRect(ren, &clip);
+        int y = top + 4 - scroll;
+        for (size_t i = 0; i < sizeof disc_lines / sizeof *disc_lines; i++) {
+            const char *l = disc_lines[i];
+            if (!*l) { y += 8; continue; }
+            if (*l == '#') y = wrapped(ren, 36, y, 1, warn, l + 1, 104) + 2; else y = wrapped(ren, 36, y, 1, white, l, 104);
+        }
+        total = y + scroll - top + 8; SDL_RenderSetClipRect(ren, 0);
+        if (total > view) {                                                                  // scroll bar
+            int bh = view * view / total; if (bh < 24) bh = 24; int by = top + (view - bh) * scroll / (maxs ? maxs : 1);
+            SDL_SetRenderDrawColor(ren, 90, 95, 105, 255); SDL_Rect sb = { WIN_W - 22, by, 8, bh }; SDL_RenderFillRect(ren, &sb);
+        }
+        text(ren, 24, WIN_H - 84, 1, nag ? red : dim, at_end ? "You have reached the end. Choose to accept or decline." : "Scroll to the end of the notice (mouse wheel, arrow keys, Page Down) to enable \"I accept\".", 0);
+        SDL_Rect r1 = { bdecl.x, bdecl.y, bdecl.w, bdecl.h }, r2 = { bacc.x, bacc.y, bacc.w, bacc.h };
+        SDL_SetRenderDrawColor(ren, 120, 40, 40, 255); SDL_RenderFillRect(ren, &r1);
+        if (at_end) SDL_SetRenderDrawColor(ren, 70, 120, 50, 255); else SDL_SetRenderDrawColor(ren, 45, 48, 55, 255);
+        SDL_RenderFillRect(ren, &r2);
+        text(ren, r1.x + (r1.w - (int)strlen(bdecl.label) * 8) / 2, r1.y + 12, 1, white, bdecl.label, 0);
+        SDL_Color ac = at_end ? white : dim; text(ren, r2.x + (r2.w - (int)strlen(bacc.label) * 8) / 2, r2.y + 12, 1, ac, bacc.label, 0);
+        const char *shot = getenv("DISCLAIMER_SHOT"); static int sf; if (shot && ++sf == 6) { SDL_Surface *sfc = SDL_CreateRGBSurfaceWithFormat(0, WIN_W, WIN_H, 32, SDL_PIXELFORMAT_ARGB8888); SDL_RenderReadPixels(ren, 0, SDL_PIXELFORMAT_ARGB8888, sfc->pixels, sfc->pitch); SDL_SaveBMP(sfc, shot); SDL_FreeSurface(sfc); }
+        SDL_RenderPresent(ren);
+        SDL_Delay(8);
+    }
+    SDL_DestroyTexture(font_tex); font_tex = 0; SDL_DestroyRenderer(ren); SDL_DestroyWindow(win);
+    return result;
+}
+
 int ui_launcher(const char *fwdir, char *out_fw, size_t outn, const char *message) {
     if (SDL_WasInit(SDL_INIT_VIDEO) == 0 && SDL_Init(SDL_INIT_VIDEO) != 0) { fprintf(stderr, "SDL: %s\n", SDL_GetError()); return 0; }
     SDL_Window *win = SDL_CreateWindow("MPC2500 Emulator", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WIN_W, WIN_H, SDL_WINDOW_RESIZABLE);
