@@ -84,4 +84,4 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           ls -la artifacts
-          gh release create "$GITHUB_REF_NAME" artifacts/* --repo "$GITHUB_REPOSITORY" --title "MPC2500 Emulator $GITHUB_REF_NAME" --generate-notes
+          gh release create "$GITHUB_REF_NAME" artifacts/*.tar.gz artifacts/*.AppImage artifacts/*.zip artifacts/*.dmg --repo "$GITHUB_REPOSITORY" --title "MPC2500 Emulator $GITHUB_REF_NAME" --generate-notes
