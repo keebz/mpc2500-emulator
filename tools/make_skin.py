@@ -360,13 +360,10 @@ for x, nm in ((lxs[0] - 12.5, "REC"), (lxs[1] - 13, "OVER DUB"), (lxs[3] - 12, "
     layout.append('leddot "%s" %.1f %.1f %.1f' % (nm, tx(x), ty(1410.5), 2.3))
 
 # =========================================================================================================== logos
-slanted.append((tx(296), ty(922), "MPC", 38, (240, 240, 244), 0.22, "bi"))
-text(tx(291), ty(938.5), "MUSIC PRODUCTION CENTER", 7.2, (236, 236, 240), "lm", "nbi")
-slanted.append((tx(346), ty(956), "2500", 28, (240, 240, 244), 0.22, "bi"))
-ax0, ay0 = M(336, 1486); ax1, ay1 = M(432, 1518)
-text(tx(384), ty(1495), "AKAI", 21, (232, 232, 236), "mm", "b")
-rrect(tx(339), ty(1503), tx(429), ty(1517.5), 3, fill=(200, 202, 206))
-text(tx(384), ty(1510.2), "professional", 8.5, (30, 30, 34), "mm", "b")
+# neutral labelling only: no manufacturer logo or marks (the emulated model is named in plain text)
+text(tx(296), ty(930), "MPC2500", 30, (240, 240, 244), "lm", "b")
+text(tx(297), ty(950), "EMULATOR", 11, (236, 236, 240), "lm", "b")
+text(tx(384), ty(1500), "unofficial emulator", 9, (200, 202, 206), "mm", "b")
 
 
 # =========================================================================================================== compose

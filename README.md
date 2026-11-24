@@ -8,7 +8,7 @@ It runs the stock Akai OS and third-party operating systems (JJOS family) unmodi
   <img src="docs/images/panel.png" alt="MPC2500 Emulator running stock Akai OS 1.24 with a kit loaded" width="760">
 </p>
 
-> **Disclaimer — please read.** This software is provided **"as is", without warranty of any kind**, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose and non-infringement. The authors accept **no liability** for any claim, damages or other liability arising from the use of, or inability to use, this software. It is an independent, unofficial project: it is **not affiliated with, endorsed by or supported by Akai Professional, inMusic, Renesas, JJOS authors or any other firmware author**. "Akai", "Akai Professional", "MPC" and "MPC2500" are trademarks of their respective owners and are used here only to identify the hardware being emulated. **No Akai or third-party firmware, manuals or other copyrighted material is included**; you must supply your own firmware files and are responsible for having the right to use them.
+> **Disclaimer — please read.** This software is provided **"as is", without warranty of any kind**, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose and non-infringement. The authors accept **no liability** for any claim, damages or other liability arising from the use of, or inability to use, this software. It is an independent, unofficial project: it is **not affiliated with, endorsed by or supported by Akai Professional, inMusic, Renesas, JJOS authors or any other firmware author**. "Akai", "Akai Professional", "MPC" and "MPC2500" are trademarks of their respective owners and are used here only to identify the hardware being emulated; the application carries no manufacturer logos. **No Akai or third-party firmware, manuals or other copyrighted material is included**; you must supply your own firmware files and are responsible for having the right to use them.
 > **An emulator is not a hardware test.** Behaviour on the emulator can differ from behaviour on a real MPC2500. Never treat "it ran in the emulator" as proof that a firmware is safe to flash to a real unit; flashing firmware can render hardware unusable, and you do so entirely at your own risk.
 
 ---
@@ -29,7 +29,7 @@ It runs the stock Akai OS and third-party operating systems (JJOS family) unmodi
 - [Repository layout](#repository-layout)
 - [Known limitations](#known-limitations)
 - [Documentation](#documentation)
-- [Licence and legal](#licence-and-legal)
+- [Licence and legal](#licence-and-legal) (MIT)
 
 ## What it is
 The MPC2500 firmware expects a specific machine: an SH7727 CPU with its DSP unit, 16 MB (or more, with a SODIMM) of SDRAM, an 8 MB flash chip holding the boot block, the operating system and the internal memory, a CompactFlash slot, a 240x64 T6963C LCD, a key matrix, sixteen velocity pads read through an analogue multiplexer and the SH7727's ADC, a quadrature DATA wheel, four Q-Link controls, and an audio path fed through the on-chip SIOF.
@@ -201,4 +201,6 @@ NOTES.md    engineering notes: what was learned about the hardware and how
 - `firmware/README.txt` — where to put firmware files.
 
 ## Licence and legal
-No licence file has been chosen yet; until one is added, all rights are reserved by the author and the code may not be redistributed. The disclaimer at the top of this file applies to every use of the software. Firmware, manuals and screenshots of firmware screens are the property of their owners; the screenshots in `docs/images` show output produced by firmware that the author supplied locally.
+The source code of this project is released under the **[MIT License](LICENSE)**: you may use, copy, modify, merge, publish, distribute, sublicense and sell it, provided the copyright and licence notice are kept. The software is provided "as is", without warranty of any kind (see the disclaimer at the top of this file and the licence text).
+
+Third-party components used by the packaged applications and the generated artwork (SDL2, the Liberation fonts, Pillow) and their licences are listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). The firmware you run in the emulator, and its manuals, are the property of their owners and are not part of this project. The application artwork is original and carries no manufacturer logos; the screenshots in `docs/images` show output produced by firmware that the author supplied locally.

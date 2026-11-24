@@ -15,7 +15,7 @@ make -C emu mpc2500emu CC=clang CFLAGS="-O2" SDL_CF="$("$PREFIX/bin/sdl2-config"
 APP="$DIST/MPC2500 Emulator.app"; rm -rf "$APP" "$DIST/$NAME".*; mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp emu/mpc2500emu "$APP/Contents/MacOS/mpc2500emu"; strip -x "$APP/Contents/MacOS/mpc2500emu"
 cp -r skin "$APP/Contents/Resources/skin"; rm -f "$APP/Contents/Resources/skin/skin_preview.png" "$APP/Contents/Resources/skin/overlay.png"
-cp panel_map.txt "$APP/Contents/Resources/"
+cp panel_map.txt LICENSE THIRD-PARTY-NOTICES.md "$APP/Contents/Resources/"
 sed "s/@VERSION@/$VERSION/g" packaging/macos/Info.plist > "$APP/Contents/Info.plist"
 ICONSET=$(mktemp -d)/icon.iconset; mkdir -p "$ICONSET"
 for s in 16 32 64 128 256 512; do sips -z $s $s packaging/icon.png --out "$ICONSET/icon_${s}x${s}.png" >/dev/null; done

@@ -17,7 +17,7 @@ rm -rf "$DIST/$NAME"; mkdir -p "$DIST/$NAME/resources"
 cp emu/mpc2500emu "$DIST/$NAME/MPC2500 Emulator"
 cp -r skin "$DIST/$NAME/resources/skin"; rm -f "$DIST/$NAME/resources/skin/skin_preview.png" "$DIST/$NAME/resources/skin/overlay.png"
 cp panel_map.txt "$DIST/$NAME/resources/"
-cp packaging/icon.png "$DIST/$NAME/icon.png"
+cp packaging/icon.png "$DIST/$NAME/icon.png"; cp LICENSE THIRD-PARTY-NOTICES.md "$DIST/$NAME/"
 cat > "$DIST/$NAME/README.txt" <<'TXT'
 MPC2500 Emulator
 ================
@@ -33,7 +33,7 @@ mkdir -p "$DIST"; (cd "$DIST" && tar czf "$NAME.tar.gz" "$NAME"); echo "wrote $D
 if [ -n "${APPIMAGETOOL:-}" ] && [ -x "$APPIMAGETOOL" ]; then
   APPDIR=$PWD/build/AppDir; rm -rf "$APPDIR"; mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/share/mpc2500-emulator"
   cp emu/mpc2500emu "$APPDIR/usr/bin/mpc2500emu"; cp -r "$DIST/$NAME/resources/." "$APPDIR/usr/share/mpc2500-emulator/"
-  cp packaging/linux/mpc2500-emulator.desktop "$APPDIR/"; cp packaging/icon.png "$APPDIR/mpc2500-emulator.png"
+  cp packaging/linux/mpc2500-emulator.desktop LICENSE THIRD-PARTY-NOTICES.md "$APPDIR/"; cp packaging/icon.png "$APPDIR/mpc2500-emulator.png"
   printf '#!/bin/sh\nHERE="$(dirname "$(readlink -f "$0")")"\nexec "$HERE/usr/bin/mpc2500emu" "$@"\n' > "$APPDIR/AppRun"; chmod +x "$APPDIR/AppRun"
   ARCH=$ARCH "$APPIMAGETOOL" --appimage-extract-and-run "$APPDIR" "$DIST/$NAME.AppImage" 2>&1 | tail -3 || ARCH=$ARCH "$APPIMAGETOOL" "$APPDIR" "$DIST/$NAME.AppImage"
   echo "wrote $DIST/$NAME.AppImage"
